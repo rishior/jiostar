@@ -267,3 +267,4 @@ When presented with questions regarding clauses absent from the contract corpus,
 2. Clause Aggregation and Dynamic Window Expansion: Implement indexing time clause boundary detection. When a chunk within a section header is retrieved, dynamically expand the retrieved span to encompass the complete parent clause or subsection.
 3. Cross Reference Graph Resolution: Contracts frequently incorporate obligations by reference (for example, "subject to the provisions of Section 4.2"). An offline indexing pass that links cross references into graph relationships would allow the retriever to return both the referencing clause and the referenced definitions.
 4. Two Stage Re ranking with Strict Negative Calibration: Introduce a lightweight cross encoder re ranker trained with hard negative legal samples to distinguish between superficial boilerplate and genuine contractual commitments, raising true negative abstention above 90 percent.
+
