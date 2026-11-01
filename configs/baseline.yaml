@@ -1,0 +1,19 @@
+name: baseline
+chunking:
+  strategy: fixed
+  chunk_size: 512
+  overlap: 128
+  min_chunk_size: 50
+embedding:
+  model_name: all-MiniLM-L6-v2
+  batch_size: 64
+  normalize: true
+retrieval:
+  top_k: 10
+  use_bm25: false
+  bm25_weight: 0.3
+  dense_weight: 0.7
+abstention:
+  enabled: true
+  score_threshold: 0.3
+  min_gap: 0.0
