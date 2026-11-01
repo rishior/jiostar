@@ -175,5 +175,14 @@ def build_index():
     print("Index built and saved.")
 
 
+@cli.command()
+@click.argument("pytest_args", nargs=-1)
+def test(pytest_args):
+    """Run unit and integration tests."""
+    import pytest
+    args = list(pytest_args) if pytest_args else ["-v"]
+    sys.exit(pytest.main(args))
+
+
 if __name__ == "__main__":
     cli()

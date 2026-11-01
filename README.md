@@ -86,13 +86,19 @@ The web application provides an intuitive search bar, adjustable top k passage c
 
 ### Test Suite
 
-Execute the test suite using pytest:
+Execute the test suite using either of the following commands:
 
 ```bash
-pytest
+python run.py test
 ```
 
-All unit tests covering chunking offset fidelity, character level metric computations, train test hash partitioning, abstention thresholding, and pipeline integration will execute.
+or via the Python module runner:
+
+```bash
+python -m pytest
+```
+
+All 42 unit and integration tests covering chunking offset fidelity, character level metric computations, train test hash partitioning, abstention thresholding, and pipeline integration will execute.
 
 ## Architecture
 
@@ -158,3 +164,4 @@ AI coding assistants were utilized during development for:
 4. Accelerating codebase scaffolding and formatting Markdown documentation.
 
 All architectural decisions, algorithmic implementations, metric logic, diagnosis rules, and experimental validations were reviewed and verified independently.
+
