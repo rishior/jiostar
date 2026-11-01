@@ -46,9 +46,16 @@ class VectorIndex:
         for chunk in chunks:
             self.chunks.append(asdict(chunk))
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 10) -> List[Tuple[dict, float]]:
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 10,
+        filter_file: Optional[str] = None,
+    ) -> List[Tuple[dict, float]]:
         """
         Search the index for the most similar chunks to the query.
+        
+        If filter_file is provided, limits returned results to chunks from that file.
         
         Returns:
             List of (chunk_metadata_dict, similarity_score) tuples,
@@ -58,13 +65,19 @@ class VectorIndex:
             return []
 
         query_embedding = query_embedding.reshape(1, -1).astype(np.float32)
-        scores, indices = self.index.search(query_embedding, min(top_k, self.index.ntotal))
+        search_k = min(self.index.ntotal, max(top_k * 20, 200)) if filter_file else min(top_k, self.index.ntotal)
+        scores, indices = self.index.search(query_embedding, search_k)
 
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx < 0:
                 continue
-            results.append((self.chunks[idx], float(score)))
+            chunk = self.chunks[idx]
+            if filter_file is not None and chunk.get("file_path") != filter_file:
+                continue
+            results.append((chunk, float(score)))
+            if len(results) >= top_k:
+                break
 
         return results
 

@@ -106,6 +106,21 @@ class ImprovementLoop:
         # Save baseline config
         initial_config.save(CONFIGS_DIR / "baseline.yaml")
 
+        # Log baseline entry
+        baseline_log = IterationLog(
+            iteration=0,
+            proposal_name="baseline",
+            rationale="Initial baseline configuration: fixed 512-character chunking, dense retrieval, no routing, no reranker, raw cosine threshold 0.3.",
+            config=initial_config.to_dict(),
+            metrics_before={},
+            metrics_after=baseline_results.to_dict(),
+            diagnosis_summary="Initial baseline evaluation across training split.",
+            accepted=True,
+            reason="Initial baseline configuration",
+            timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+        )
+        self._log_iteration(baseline_log)
+
         tried_proposals = set()
 
         for iteration in range(1, self.max_iterations + 1):
@@ -240,6 +255,14 @@ class ImprovementLoop:
             return False, (
                 f"Answerable abstention rate is {candidate.abstention_rate_answerable:.4f}, "
                 f"exceeding max of {self.MAX_ANSWERABLE_ABSTENTION}"
+            )
+
+        # Check unanswerable abstention improvement
+        unanswerable_gain = candidate.abstention_rate_unanswerable - current.abstention_rate_unanswerable
+        if unanswerable_gain >= 0.10 and candidate_primary >= current_primary - 0.02:
+            return True, (
+                f"Abstention on unanswerable improved from {current.abstention_rate_unanswerable:.4f} "
+                f"to {candidate.abstention_rate_unanswerable:.4f} (+{unanswerable_gain:.4f}) with stable recall"
             )
 
         # Check primary metric improvement

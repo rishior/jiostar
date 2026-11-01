@@ -33,13 +33,19 @@ def should_abstain(results: List, config: AbstentionConfig) -> bool:
 
     top_score = results[0].score
 
+    # Select threshold based on configuration
+    if getattr(config, "use_reranker_score", False):
+        threshold = config.reranker_threshold
+    else:
+        threshold = config.score_threshold
+
     # Abstain if the best score is below the threshold
-    if top_score < config.score_threshold:
+    if top_score < threshold:
         return True
 
     # Abstain if the gap between top score and threshold is too small
     if config.min_gap > 0:
-        gap = top_score - config.score_threshold
+        gap = top_score - threshold
         if gap < config.min_gap:
             return True
 

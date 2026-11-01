@@ -2,7 +2,8 @@
 Retrieval pipeline.
 
 Orchestrates the full retrieval flow: takes a query, embeds it, searches the
-index, optionally combines with BM25 scores, applies abstention logic, and
+index, optionally combines with BM25 scores, routes to target documents,
+reranks candidates with a cross-encoder, applies abstention logic, and
 returns ranked results with character offsets.
 """
 
@@ -17,6 +18,8 @@ from src.indexing.embedder import Embedder
 from src.indexing.index import VectorIndex
 from src.indexing.chunker import Chunk, chunk_document
 from src.retrieval.abstention import should_abstain
+from src.retrieval.router import DocumentRouter
+from src.retrieval.ranker import CrossEncoderReranker
 from src.data.loader import load_document, load_benchmark, get_referenced_files
 
 
@@ -45,6 +48,21 @@ class RetrievalPipeline:
         self.index: Optional[VectorIndex] = None
         self.bm25 = None
         self.bm25_chunks: List[dict] = []
+        self.router: Optional[DocumentRouter] = None
+        self.reranker: Optional[CrossEncoderReranker] = None
+
+    def _init_components(self):
+        """Initialize document router and reranker based on configuration and indexed chunks."""
+        if self.index is not None and self.config.retrieval.use_routing:
+            doc_files = list(set(c["file_path"] for c in self.index.chunks))
+            self.router = DocumentRouter(doc_files)
+        else:
+            self.router = None
+
+        if self.config.retrieval.use_reranker:
+            self.reranker = CrossEncoderReranker(self.config.retrieval.reranker_model)
+        else:
+            self.reranker = None
 
     def build_index(self, queries: Optional[List[dict]] = None):
         """
@@ -108,6 +126,7 @@ class RetrievalPipeline:
         if self.config.retrieval.use_bm25:
             self._build_bm25(all_chunks)
 
+        self._init_components()
         print(f"Index built with {self.index.size} vectors")
 
     def _build_bm25(self, chunks: List[Chunk]):
@@ -137,6 +156,8 @@ class RetrievalPipeline:
             tokenized = [c["text"].lower().split() for c in self.bm25_chunks]
             self.bm25 = BM25Okapi(tokenized)
 
+        self._init_components()
+
     def query(self, question: str) -> List[RetrievalResult]:
         """
         Answer a question by retrieving relevant passages.
@@ -149,13 +170,34 @@ class RetrievalPipeline:
 
         top_k = self.config.retrieval.top_k
 
+        # Document routing
+        filter_file: Optional[str] = None
+        if self.config.retrieval.use_routing and self.router is not None:
+            target_file, conf, named = self.router.route(question)
+            if named and target_file is None:
+                # Question explicitly named an agreement not present in the indexed corpus
+                return []
+            if target_file is not None:
+                filter_file = target_file
+
+        # Candidate retrieval size
+        candidate_k = (
+            self.config.retrieval.rerank_top_k
+            if self.config.retrieval.use_reranker
+            else max(top_k * 2, 20)
+        )
+
         # Dense retrieval
         query_embedding = self.embedder.embed_query(question)
-        dense_results = self.index.search(query_embedding, top_k=top_k * 2)
+        dense_results = self.index.search(
+            query_embedding,
+            top_k=candidate_k,
+            filter_file=filter_file,
+        )
 
         # Combine with BM25 if configured
         if self.config.retrieval.use_bm25 and self.bm25 is not None:
-            results = self._hybrid_search(question, dense_results, top_k)
+            results = self._hybrid_search(question, dense_results, candidate_k, filter_file=filter_file)
         else:
             results = [
                 RetrievalResult(
@@ -166,8 +208,14 @@ class RetrievalPipeline:
                     score=score,
                     chunk_id=chunk["chunk_id"],
                 )
-                for chunk, score in dense_results[:top_k]
+                for chunk, score in dense_results
             ]
+
+        # Rerank with CrossEncoder if configured
+        if self.config.retrieval.use_reranker and self.reranker is not None and results:
+            results = self.reranker.rerank(question, results, top_k=top_k)
+        else:
+            results = results[:top_k]
 
         # Apply abstention
         if self.config.abstention.enabled and results:
@@ -181,28 +229,23 @@ class RetrievalPipeline:
         question: str,
         dense_results: List[Tuple[dict, float]],
         top_k: int,
+        filter_file: Optional[str] = None,
     ) -> List[RetrievalResult]:
         """
         Combine dense and BM25 retrieval scores.
         
         Uses a weighted combination of normalized dense and BM25 scores
-        to produce the final ranking.
+        to produce the candidate ranking.
         """
-        # Get BM25 scores for all chunks
         query_tokens = question.lower().split()
         bm25_scores = self.bm25.get_scores(query_tokens)
 
-        # Normalize BM25 scores
-        bm25_max = max(bm25_scores) if max(bm25_scores) > 0 else 1.0
+        bm25_max = max(bm25_scores) if len(bm25_scores) > 0 and max(bm25_scores) > 0 else 1.0
         bm25_scores_norm = bm25_scores / bm25_max
 
-        # Build a map of chunk indices to dense scores
-        # dense_results contains (chunk_dict, score) pairs
-        # We need to find the index in bm25_chunks for each
         dense_weight = self.config.retrieval.dense_weight
         bm25_weight = self.config.retrieval.bm25_weight
 
-        # Score all chunks that appear in dense results
         scored = {}
         for chunk, dense_score in dense_results:
             key = (chunk["file_path"], chunk["start"], chunk["end"])
@@ -212,21 +255,21 @@ class RetrievalPipeline:
                 "bm25_score": 0.0,
             }
 
-        # Find BM25 scores for dense results and top BM25 results
         for i, bm25_score_norm in enumerate(bm25_scores_norm):
             if i < len(self.bm25_chunks):
                 c = self.bm25_chunks[i]
+                if filter_file is not None and c["file_path"] != filter_file:
+                    continue
                 key = (c["file_path"], c["start"], c["end"])
                 if key in scored:
-                    scored[key]["bm25_score"] = bm25_score_norm
-                elif bm25_score_norm > 0.5:
+                    scored[key]["bm25_score"] = float(bm25_score_norm)
+                elif bm25_score_norm > 0.4:
                     scored[key] = {
                         "chunk": c,
                         "dense_score": 0.0,
-                        "bm25_score": bm25_score_norm,
+                        "bm25_score": float(bm25_score_norm),
                     }
 
-        # Compute combined scores
         results = []
         for key, data in scored.items():
             combined_score = (
@@ -244,4 +287,3 @@ class RetrievalPipeline:
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:top_k]
-

@@ -52,3 +52,14 @@ class TestAbstention:
         results = [MockResult(0.5)]
         assert should_abstain(results, config) is False
 
+    def test_reranker_threshold_abstention(self):
+        config = AbstentionConfig(enabled=True, use_reranker_score=True, reranker_threshold=-1.0)
+        results = [MockResult(-2.5)]
+        assert should_abstain(results, config) is True
+
+    def test_reranker_threshold_no_abstention(self):
+        config = AbstentionConfig(enabled=True, use_reranker_score=True, reranker_threshold=-1.0)
+        results = [MockResult(2.5)]
+        assert should_abstain(results, config) is False
+
+

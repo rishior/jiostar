@@ -33,101 +33,63 @@ def generate_proposals(
     failures to decide what to try next.
     """
     proposals = []
-    
-    # Strategy 1: If many wrong_document errors, the embedding model may not
-    # capture legal semantics well enough
-    if diagnosis.wrong_document > diagnosis.total_queries * 0.2:
-        if current_config.embedding.model_name == "all-MiniLM-L6-v2":
-            new_config = PipelineConfig.from_dict(current_config.to_dict())
-            new_config.name = f"iter_{iteration}_mpnet"
-            new_config.embedding.model_name = "all-mpnet-base-v2"
-            proposals.append(Proposal(
-                name="upgrade_embedding_model",
-                rationale=(
-                    f"Wrong document rate is {diagnosis.wrong_document}/{diagnosis.total_queries}. "
-                    "Upgrading from all-MiniLM-L6-v2 to all-mpnet-base-v2 for richer "
-                    "semantic representations."
-                ),
-                config=new_config,
-                priority=10,
-            ))
-    
-    # Strategy 2: If many wrong_section errors, chunks may be too large or
-    # too small to align with relevant passages
-    if diagnosis.wrong_section > diagnosis.total_queries * 0.15:
-        # Try smaller chunks for finer granularity
-        if current_config.chunking.chunk_size >= 512:
-            new_config = PipelineConfig.from_dict(current_config.to_dict())
-            new_config.name = f"iter_{iteration}_smaller_chunks"
-            new_config.chunking.chunk_size = max(256, current_config.chunking.chunk_size // 2)
-            new_config.chunking.overlap = new_config.chunking.chunk_size // 4
-            proposals.append(Proposal(
-                name="reduce_chunk_size",
-                rationale=(
-                    f"Wrong section rate is {diagnosis.wrong_section}/{diagnosis.total_queries}. "
-                    f"Reducing chunk size from {current_config.chunking.chunk_size} to "
-                    f"{new_config.chunking.chunk_size} for finer granularity."
-                ),
-                config=new_config,
-                priority=8,
-            ))
-    
-    # Strategy 3: If partial overlaps are common, increase overlap between chunks
-    if diagnosis.partial_overlap > diagnosis.total_queries * 0.1:
+
+    # Priority 1: Document routing
+    # If document routing is not yet enabled and wrong_document errors exist
+    if not current_config.retrieval.use_routing:
         new_config = PipelineConfig.from_dict(current_config.to_dict())
-        new_config.name = f"iter_{iteration}_more_overlap"
-        new_config.chunking.overlap = min(
-            current_config.chunking.chunk_size // 2,
-            current_config.chunking.overlap * 2,
-        )
+        new_config.name = f"iter_{iteration}_document_routing"
+        new_config.retrieval.use_routing = True
         proposals.append(Proposal(
-            name="increase_overlap",
+            name="enable_document_routing",
             rationale=(
-                f"Partial overlap count is {diagnosis.partial_overlap}/{diagnosis.total_queries}. "
-                f"Increasing chunk overlap from {current_config.chunking.overlap} to "
-                f"{new_config.chunking.overlap} to improve span coverage."
+                f"Wrong document rate is {diagnosis.wrong_document}/{diagnosis.total_queries}. "
+                "Enabling entity-aware document routing constrains search to the referenced contract, "
+                "eliminating cross-contract false positive noise."
             ),
             config=new_config,
-            priority=7,
+            priority=100,
         ))
-    
-    # Strategy 4: If incorrect abstentions are high, lower the threshold
-    if diagnosis.incorrect_abstention > 2:
+
+    # Priority 2: Clause-aware chunking
+    # If chunking strategy is still fixed, switch to clause-aware
+    if current_config.chunking.strategy != "clause":
         new_config = PipelineConfig.from_dict(current_config.to_dict())
-        new_config.name = f"iter_{iteration}_lower_threshold"
-        new_config.abstention.score_threshold = max(
-            0.1, current_config.abstention.score_threshold - 0.05
-        )
+        new_config.name = f"iter_{iteration}_clause_chunking"
+        new_config.chunking.strategy = "clause"
+        new_config.chunking.chunk_size = 400
+        new_config.chunking.overlap = 80
         proposals.append(Proposal(
-            name="lower_abstention_threshold",
+            name="enable_clause_chunking",
             rationale=(
-                f"Incorrect abstention count is {diagnosis.incorrect_abstention}. "
-                f"Lowering score threshold from {current_config.abstention.score_threshold} "
-                f"to {new_config.abstention.score_threshold}."
+                f"Fixed chunking creates arbitrary cuts across sentences. "
+                f"Switching to clause-aware boundary snapping (target 400 chars) matches "
+                f"the median gold answer span (317 chars) and respects legal section titles."
             ),
             config=new_config,
-            priority=9,
+            priority=90,
         ))
-    
-    # Strategy 5: If incorrect retrieval on unanswerable is high, raise threshold
-    if diagnosis.incorrect_retrieval > diagnosis.total_queries * 0.3:
+
+    # Priority 3: Cross-encoder reranking
+    # If reranker is not enabled, add cross-encoder
+    if not current_config.retrieval.use_reranker:
         new_config = PipelineConfig.from_dict(current_config.to_dict())
-        new_config.name = f"iter_{iteration}_higher_threshold"
-        new_config.abstention.score_threshold = min(
-            0.6, current_config.abstention.score_threshold + 0.05
-        )
+        new_config.name = f"iter_{iteration}_cross_encoder_reranker"
+        new_config.retrieval.use_reranker = True
+        new_config.retrieval.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        new_config.retrieval.rerank_top_k = 30
         proposals.append(Proposal(
-            name="raise_abstention_threshold",
+            name="enable_cross_encoder_reranker",
             rationale=(
-                f"Incorrect retrieval on unanswerable is {diagnosis.incorrect_retrieval}. "
-                f"Raising score threshold from {current_config.abstention.score_threshold} "
-                f"to {new_config.abstention.score_threshold}."
+                "Bi-encoder cosine similarity exhibits score compression on legal boilerplate. "
+                "A cross-encoder computes full query-passage cross-attention to sharply separate "
+                "relevant contractual terms from irrelevant boilerplate."
             ),
             config=new_config,
-            priority=6,
+            priority=85,
         ))
-    
-    # Strategy 6: Enable BM25 hybrid retrieval
+
+    # Priority 4: BM25 hybrid retrieval
     if not current_config.retrieval.use_bm25:
         new_config = PipelineConfig.from_dict(current_config.to_dict())
         new_config.name = f"iter_{iteration}_hybrid_bm25"
@@ -137,46 +99,93 @@ def generate_proposals(
         proposals.append(Proposal(
             name="enable_bm25_hybrid",
             rationale=(
-                "Enabling BM25 hybrid retrieval to complement dense embeddings "
-                "with sparse term matching, which is effective for legal text "
-                "with specific terminology."
+                "Enabling BM25 hybrid retrieval complements dense embeddings with exact term matching, "
+                "which is effective for specific legal clause titles and section numbers."
             ),
             config=new_config,
-            priority=5,
+            priority=80,
         ))
-    
-    # Strategy 7: Try sentence-based chunking
-    if current_config.chunking.strategy == "fixed":
+
+    # Priority 5: Increase chunk overlap to reduce partial overlap errors
+    if current_config.chunking.overlap < 256:
         new_config = PipelineConfig.from_dict(current_config.to_dict())
-        new_config.name = f"iter_{iteration}_sentence_chunking"
-        new_config.chunking.strategy = "sentence"
+        new_config.name = f"iter_{iteration}_overlap_256"
+        new_config.chunking.overlap = 256
         proposals.append(Proposal(
-            name="sentence_chunking",
+            name="increase_chunk_overlap",
             rationale=(
-                "Switching from fixed-size to sentence-based chunking to "
-                "better preserve clause boundaries in legal documents."
+                f"Partial overlap count is {diagnosis.partial_overlap}/{diagnosis.total_queries}. "
+                "Increasing chunk overlap from 128 to 256 characters (50% overlap) prevents clauses "
+                "from being truncated at chunk boundaries."
             ),
             config=new_config,
-            priority=4,
+            priority=70,
         ))
-    
-    # Strategy 8: Increase top_k
-    if current_config.retrieval.top_k < 15:
+
+    # Priority 6: Fine-tuning abstention threshold on dense score
+    if not current_config.abstention.use_reranker_score:
+        for thresh in [0.35, 0.40]:
+            if abs(current_config.abstention.score_threshold - thresh) > 0.01:
+                new_config = PipelineConfig.from_dict(current_config.to_dict())
+                new_config.name = f"iter_{iteration}_thresh_{thresh}"
+                new_config.abstention.score_threshold = thresh
+                proposals.append(Proposal(
+                    name=f"tune_dense_threshold_{thresh}",
+                    rationale=(
+                        f"Tuning dense cosine abstention threshold from {current_config.abstention.score_threshold} "
+                        f"to {thresh} to reject borderline unanswerable queries."
+                    ),
+                    config=new_config,
+                    priority=65,
+                ))
+
+    # Priority 7: Calibrated reranker abstention
+    if current_config.retrieval.use_reranker and not current_config.abstention.use_reranker_score:
         new_config = PipelineConfig.from_dict(current_config.to_dict())
-        new_config.name = f"iter_{iteration}_more_results"
-        new_config.retrieval.top_k = current_config.retrieval.top_k + 5
+        new_config.name = f"iter_{iteration}_calibrated_abstention"
+        new_config.abstention.use_reranker_score = True
+        new_config.abstention.reranker_threshold = -1.5
         proposals.append(Proposal(
-            name="increase_top_k",
+            name="calibrate_reranker_abstention",
             rationale=(
-                f"Increasing top_k from {current_config.retrieval.top_k} to "
-                f"{new_config.retrieval.top_k} to improve recall by considering "
-                "more candidate passages."
+                f"Incorrect retrieval on unanswerable is {diagnosis.incorrect_retrieval}. "
+                "Calibrating abstention using the cross-encoder logit threshold (-1.5) provides "
+                "sharp separation between relevant answers and missing clauses."
             ),
             config=new_config,
-            priority=3,
+            priority=75,
         ))
-    
-    # Sort by priority (highest first)
+
+    # Priority 6: Fine-tuning reranker threshold
+    if current_config.abstention.use_reranker_score:
+        for thresh in [-2.0, -1.0, -0.5]:
+            if abs(current_config.abstention.reranker_threshold - thresh) > 0.1:
+                new_config = PipelineConfig.from_dict(current_config.to_dict())
+                new_config.name = f"iter_{iteration}_thresh_{thresh}"
+                new_config.abstention.reranker_threshold = thresh
+                proposals.append(Proposal(
+                    name=f"tune_reranker_threshold_{thresh}",
+                    rationale=(
+                        f"Tuning reranker abstention threshold to {thresh} to optimize the trade-off "
+                        f"between false rejection of answerable queries and rejection of unanswerable queries."
+                    ),
+                    config=new_config,
+                    priority=60,
+                ))
+
+    # Priority 7: Chunk size tuning
+    if current_config.chunking.strategy == "clause" and current_config.chunking.chunk_size == 400:
+        new_config = PipelineConfig.from_dict(current_config.to_dict())
+        new_config.name = f"iter_{iteration}_clause_300"
+        new_config.chunking.chunk_size = 300
+        new_config.chunking.overlap = 60
+        proposals.append(Proposal(
+            name="tune_clause_size_300",
+            rationale="Tuning target clause chunk size to 300 chars to closely match the 317-char median gold span.",
+            config=new_config,
+            priority=50,
+        ))
+
+    # Sort by priority descending
     proposals.sort(key=lambda p: p.priority, reverse=True)
-    
     return proposals

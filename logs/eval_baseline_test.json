@@ -1,9 +1,9 @@
 {
   "config_name": "baseline",
   "split": "test",
-  "num_queries": 66,
+  "num_queries": 65,
   "num_answerable": 54,
-  "num_unanswerable": 12,
+  "num_unanswerable": 11,
   "k_values": [
     1,
     3,
@@ -30,5 +30,5 @@
   },
   "abstention_rate_answerable": 0.0,
   "abstention_rate_unanswerable": 0.0,
-  "elapsed_seconds": 13.2353994846344
+  "elapsed_seconds": 18.16873598098755
 }

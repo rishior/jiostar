@@ -27,6 +27,75 @@ class Chunk:
         return self.end - self.start
 
 
+def chunk_document_clause(
+    text: str,
+    file_path: str,
+    chunk_size: int = 400,
+    overlap: int = 100,
+    min_chunk_size: int = 50,
+) -> List[Chunk]:
+    """
+    Split a document into structure-aware clause chunks.
+
+    Snaps to paragraph breaks, section headings, and sentence ends while
+    targeting the natural length of contract answer clauses (300 to 500 chars).
+    Never cuts mid-word and preserves exact character offsets.
+    """
+    chunks = []
+    text_len = len(text)
+    if text_len == 0:
+        return chunks
+
+    start = 0
+    chunk_id = 0
+
+    while start < text_len:
+        end = min(start + chunk_size, text_len)
+        if end < text_len:
+            # Look for double newline (paragraph break) first
+            boundary = text.rfind("\n\n", start + chunk_size // 2, end)
+            if boundary != -1:
+                end = boundary + 2
+            else:
+                # Look for sentence end
+                boundary = text.rfind(". ", start + chunk_size // 2, end)
+                if boundary != -1:
+                    end = boundary + 2
+                else:
+                    # Look for single newline
+                    boundary = text.rfind("\n", start + chunk_size // 2, end)
+                    if boundary != -1:
+                        end = boundary + 1
+                    else:
+                        # Fallback to word boundary
+                        boundary = text.rfind(" ", start + chunk_size // 2, end)
+                        if boundary > start:
+                            end = boundary + 1
+
+        c_text = text[start:end]
+        if len(c_text.strip()) >= min_chunk_size:
+            chunks.append(Chunk(
+                text=c_text,
+                file_path=file_path,
+                start=start,
+                end=end,
+                chunk_id=chunk_id,
+            ))
+            chunk_id += 1
+
+        # Advance with overlap
+        step = max(chunk_size - overlap, 50)
+        next_start = start + step
+        if next_start < text_len:
+            # Align next_start to beginning of next word
+            wb = text.find(" ", next_start, min(next_start + 60, text_len))
+            if wb != -1:
+                next_start = wb + 1
+        start = next_start
+
+    return chunks
+
+
 def chunk_document_fixed(
     text: str,
     file_path: str,
@@ -52,11 +121,10 @@ def chunk_document_fixed(
     while start < text_len:
         end = min(start + chunk_size, text_len)
 
-        # Try to align to a word boundary (look for whitespace near the end)
         if end < text_len:
             boundary = text.rfind(" ", start + chunk_size // 2, end)
             if boundary > start:
-                end = boundary + 1  # include the space
+                end = boundary + 1
 
         chunk_text = text[start:end]
 
@@ -70,7 +138,6 @@ def chunk_document_fixed(
             ))
             chunk_id += 1
 
-        # Advance by (chunk_size - overlap), but not past end
         step = max(chunk_size - overlap, 1)
         start += step
 
@@ -86,13 +153,7 @@ def chunk_document_sentence(
 ) -> List[Chunk]:
     """
     Split a document into chunks at sentence boundaries.
-    
-    Sentences are detected by common legal document patterns (periods followed
-    by spaces and capitals, semicolons at clause boundaries, etc.). Chunks
-    accumulate sentences until they approach chunk_size, then start a new chunk
-    with overlap from the previous sentences.
     """
-    # Split on sentence boundaries common in legal text
     sentence_pattern = re.compile(
         r'(?<=[.;!?])\s+(?=[A-Z"(\d])|(?<=\n)\s*(?=\S)'
     )
@@ -116,7 +177,6 @@ def chunk_document_sentence(
     current_start_idx = 0
 
     while current_start_idx < len(sentences):
-        # Accumulate sentences until we approach chunk_size
         current_start = sentences[current_start_idx][0]
         current_end = current_start
         sent_idx = current_start_idx
@@ -140,7 +200,6 @@ def chunk_document_sentence(
             ))
             chunk_id += 1
 
-        # Calculate how many sentences to skip for overlap
         overlap_chars = 0
         overlap_start_idx = sent_idx
         for rev_idx in range(sent_idx - 1, current_start_idx, -1):
@@ -168,21 +227,25 @@ def chunk_document(
 ) -> List[Chunk]:
     """
     Chunk a document according to the given configuration.
-    
-    Routes to the appropriate chunking strategy based on config.strategy.
     """
-    if config.strategy == "sentence":
+    if config.strategy == "clause":
+        return chunk_document_clause(
+            text, file_path,
+            chunk_size=config.chunk_size,
+            overlap=config.overlap,
+            min_chunk_size=config.min_chunk_size,
+        )
+    elif config.strategy == "sentence":
         return chunk_document_sentence(
             text, file_path,
             chunk_size=config.chunk_size,
             overlap=config.overlap,
             min_chunk_size=config.min_chunk_size,
         )
-    else:  # "fixed" is the default
+    else:
         return chunk_document_fixed(
             text, file_path,
             chunk_size=config.chunk_size,
             overlap=config.overlap,
             min_chunk_size=config.min_chunk_size,
         )
-

@@ -29,16 +29,22 @@ class EmbeddingConfig:
 @dataclass
 class RetrievalConfig:
     top_k: int = 10                  # number of candidates to retrieve
+    use_routing: bool = True         # whether to route queries to candidate contract
     use_bm25: bool = False           # whether to include BM25 scores
-    bm25_weight: float = 0.3        # weight for BM25 in hybrid scoring
-    dense_weight: float = 0.7       # weight for dense embeddings
+    bm25_weight: float = 0.3         # weight for BM25 in hybrid scoring
+    dense_weight: float = 0.7        # weight for dense embeddings
+    use_reranker: bool = False       # whether to apply cross-encoder reranking
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_top_k: int = 30           # number of candidates passed to reranker
 
 
 @dataclass
 class AbstentionConfig:
     enabled: bool = True
-    score_threshold: float = 0.3     # minimum score to return a result
+    score_threshold: float = 0.3     # minimum score to return a result (for dense/hybrid)
     min_gap: float = 0.0             # minimum gap between top score and threshold
+    use_reranker_score: bool = False # whether to threshold on cross-encoder score
+    reranker_threshold: float = -1.0 # minimum cross-encoder logit score to return result
 
 
 @dataclass

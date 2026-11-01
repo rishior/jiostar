@@ -17,7 +17,7 @@ htmlcov/
 data/.cache/
 data/corpus/
 data/benchmarks/
-data/index/*/
+data/index/
 
 # Keep the base index files if desired or ignore large binaries
 *.index

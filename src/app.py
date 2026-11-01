@@ -27,15 +27,9 @@ def load_pipeline():
         cfg = PipelineConfig()
 
     pipeline = RetrievalPipeline(cfg)
-
-    index_dir = DATA_DIR / "index"
-    if index_dir.exists() and (index_dir / "faiss.index").exists():
-        pipeline.load_index(index_dir)
-    else:
-        from src.data.loader import load_benchmark
-        queries = load_benchmark()
-        pipeline.build_index(queries)
-        pipeline.save_index(index_dir)
+    from src.data.loader import load_benchmark
+    queries = load_benchmark()
+    pipeline.build_index(queries)
 
     return pipeline
 

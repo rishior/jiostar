@@ -69,14 +69,7 @@ def query(question, config, top_k):
     cfg.retrieval.top_k = top_k
 
     pipeline = RetrievalPipeline(cfg)
-
-    index_dir = DATA_DIR / "index"
-    if index_dir.exists() and (index_dir / "faiss.index").exists():
-        pipeline.load_index(index_dir)
-    else:
-        print("No saved index found. Building index...")
-        pipeline.build_index()
-        pipeline.save_index(index_dir)
+    pipeline.build_index()
 
     results = pipeline.query(question)
 
@@ -119,14 +112,7 @@ def evaluate(config, split):
             unanswerable = json.load(f)
 
     pipeline = RetrievalPipeline(cfg)
-
-    index_dir = DATA_DIR / "index"
-    if index_dir.exists() and (index_dir / "faiss.index").exists():
-        pipeline.load_index(index_dir)
-    else:
-        print("Building index...")
-        pipeline.build_index(queries)
-        pipeline.save_index(index_dir)
+    pipeline.build_index(queries)
 
     evaluator = Evaluator(pipeline)
     results = evaluator.evaluate(queries, unanswerable, split=split)
@@ -147,7 +133,11 @@ def improve(max_iterations):
         with open(unanswerable_path, "r", encoding="utf-8") as f:
             unanswerable = json.load(f)
 
-    initial_config = PipelineConfig(name="baseline")
+    baseline_path = CONFIGS_DIR / "baseline.yaml"
+    if baseline_path.exists():
+        initial_config = PipelineConfig.load(baseline_path)
+    else:
+        initial_config = PipelineConfig(name="baseline")
 
     loop = ImprovementLoop(
         queries=queries,
