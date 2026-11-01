@@ -1,38 +1,142 @@
 [
-    {"query": "What is the penalty for broadcasting content on Mars?", "label": "unanswerable"},
-    {"query": "Does the agreement cover distribution via quantum computing networks?", "label": "unanswerable"},
-    {"query": "What are the requirements for translating content into Klingon?", "label": "unanswerable"},
-    {"query": "Is there a clause about holographic display rights?", "label": "unanswerable"},
-    {"query": "What is the carbon offset obligation for streaming the content?", "label": "unanswerable"},
-    {"query": "Does the contract specify rules for AI-generated derivative works?", "label": "unanswerable"},
-    {"query": "What cryptocurrency payment methods are accepted under this agreement?", "label": "unanswerable"},
-    {"query": "Is there a clause regarding the use of content in virtual reality theme parks?", "label": "unanswerable"},
-    {"query": "What are the requirements for content distribution on the dark web?", "label": "unanswerable"},
-    {"query": "Does this agreement cover the right to use content in political campaigns?", "label": "unanswerable"},
-    {"query": "What is the maximum volume level permitted for public screenings?", "label": "unanswerable"},
-    {"query": "Are there restrictions on using the content for sleep therapy applications?", "label": "unanswerable"},
-    {"query": "What is the policy on using content clips in TikTok compilations?", "label": "unanswerable"},
-    {"query": "Does the agreement address drone delivery of physical media?", "label": "unanswerable"},
-    {"query": "Is there a right to create NFTs from the licensed content?", "label": "unanswerable"},
-    {"query": "What are the food safety requirements for promotional events?", "label": "unanswerable"},
-    {"query": "Does the agreement cover satellite radio broadcast rights?", "label": "unanswerable"},
-    {"query": "What is the policy on embedding content in video game cutscenes?", "label": "unanswerable"},
-    {"query": "Are there requirements for braille transcription of the content?", "label": "unanswerable"},
-    {"query": "Does the agreement address the use of content in military training?", "label": "unanswerable"},
-    {"query": "What is the minimum screen resolution required for digital distribution?", "label": "unanswerable"},
-    {"query": "Is there a clause about telepresence broadcasting rights?", "label": "unanswerable"},
-    {"query": "What environmental impact assessment is required before production?", "label": "unanswerable"},
-    {"query": "Does the contract address deepfake restrictions on actor likenesses?", "label": "unanswerable"},
-    {"query": "What are the overtime pay requirements for post-production staff?", "label": "unanswerable"},
-    {"query": "Is there a clause governing content use in autonomous vehicle entertainment systems?", "label": "unanswerable"},
-    {"query": "What pet policies apply on set during filming?", "label": "unanswerable"},
-    {"query": "Does the agreement cover content adaptation for sign language performances?", "label": "unanswerable"},
-    {"query": "What parking arrangements are provided for the production crew?", "label": "unanswerable"},
-    {"query": "Is there a clause about content use in prison education programs?", "label": "unanswerable"},
-    {"query": "What fire safety certifications are required for screening venues?", "label": "unanswerable"},
-    {"query": "Does the agreement address time-shifted viewing on wearable devices?", "label": "unanswerable"},
-    {"query": "What are the catering requirements for press junket events?", "label": "unanswerable"},
-    {"query": "Is there a clause regarding interactive choose-your-own-adventure adaptations?", "label": "unanswerable"},
-    {"query": "What noise abatement procedures apply during outdoor filming?", "label": "unanswerable"}
+  {
+    "query": "Consider the Service Agreement between BicycleTX Ltd and Nigel Crockett for Chief Business Officer Position; Does this agreement contain a clause regarding General Data Protection Regulation (GDPR) data controller obligations under this agreement?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Amendment No. 3 to Wireless Content License Agreement between Fox Mobile Entertainment, Inc. and Glu Mobile; What are the requirements for cryptocurrency settlement of royalties under this agreement in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Cooperation Agreement between HPIL ENERGYTECH Inc. and GINARES GROUP AG for Renewable Energy Projects; Is there a carbon credit offset obligation or environmental sustainability covenant in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Promotion Agreement between King Pharmaceuticals, Inc. and Meridian Medical Technologies; What are the liquidated damages penalties if Meridian fails to deliver auto-injectors on time in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Service Agreement between Theravance Biopharma UK Limited and Brett Haumann; Does this contract provide for equity compensation via non-fungible tokens (NFTs) for this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Strategic Alliance Agreement between Information System Associates, Inc. and Rubicon Software Group plc; What is the maximum cap on consequential damages for gross negligence?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Content License Agreement between Glu Mobile Inc. and Fox Mobile Entertainment; Does this agreement contain a most favored nation (MFN) pricing clause for ringtones in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Distributor Agreement between Accuray Inc. and TomoTherapy; What are the mandatory cybersecurity insurance policy minimums required under this agreement?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Endorsement Agreement between Holiday RV Superstores Inc. and the athlete; Is there a clause restricting moral conduct related to social media video postings for this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Joint Venture Agreement between Accelerated Technologies Holding Corp. and its partner; Does this agreement require arbitration before the London Court of International Arbitration (LCIA) under this agreement?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Transportation Services Agreement between Dynamex Inc. and its customer; What are the specified cold-chain temperature monitoring protocols for vaccine deliveries?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Co-Branding Agreement between 2Themart.Com Inc. and its affiliate; Does this contract specify terms for mobile responsive web banner advertising?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Co-Branding Agreement between Pcquote.Com Inc. and its partner; What are the daily limits on stock market data API call volumes in this agreement?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Strategic Alliance Agreement between Duos Technologies Group, Inc. and its partner; Is there an explicit provision governing the ownership of AI training datasets in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Service Agreement between Ability Inc. and its consultant; What are the specific export compliance requirements under the International Traffic in Arms Regulations (ITAR)?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Endorsement Agreement between Adams Golf Inc. and the professional golfer; Does this contract prohibit endorsements of competing CBD wellness supplements?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Service Agreement between BicycleTX Ltd and Nigel Crockett for Chief Business Officer Position; Is there a provision requiring mandatory COVID-19 health certifications in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Cooperation Agreement between HPIL ENERGYTECH Inc. and GINARES GROUP AG for Renewable Energy Projects; What are the required escrow account parameters for decommissioning wind turbines?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Promotion Agreement between King Pharmaceuticals, Inc. and Meridian Medical Technologies; Does this agreement grant an exclusive option to sublicense generic epinephrine formulations?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Strategic Alliance Agreement between Information System Associates, Inc. and Rubicon Software Group plc; What is the procedure for joint patent prosecution before the European Patent Office under this agreement?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Master Services Agreement between Netflix Inc. and Paramount Global; What is the exclusivity window for international digital distribution?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Content Licensing Agreement between Spotify AB and Sony Music Entertainment; Does this agreement specify per-stream royalty minimums for generative audio?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Technology License Agreement between Apple Inc. and Epic Games; What is the revenue share percentage for third-party in-app purchases?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Cloud Hosting Agreement between Amazon Web Services LLC and Reddit Inc.; What are the uptime service level agreement (SLA) penalty credits?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Distribution Agreement between Warner Bros. Discovery and Roku Inc.; Does the agreement grant rights to insert dynamic FAST ad breaks into theatrical releases?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Software License Agreement between Microsoft Corporation and OpenAI Global LLC; What are the conditions for public model checkpoint weight dissemination?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Patent Cross-License Agreement between Google LLC and Samsung Electronics; What are the royalty deductions for standard essential cellular patents in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Co-Production Agreement between Walt Disney Studios and Sony Pictures; Who retains final cut privilege for theatrical trailers?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Broadcast Rights Agreement between Major League Baseball and Apple Inc.; Are Friday night doubleheaders subject to regional blackouts?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Telecommunications Interconnect Agreement between AT&T Mobility and T-Mobile USA; What are the inter-carrier SIP trunk latency guarantees?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Content Syndication Agreement between The New York Times Company and Yahoo Inc.; What are the attribution guidelines for syndication on AMP pages?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Commercial Lease Agreement between WeWork Companies and Boston Properties; What is the tenant improvement allowance per usable square foot?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Merchant Processing Agreement between Stripe Inc. and Shopify Inc.; What are the chargeback dispute fee structures for multi-currency transactions in this contract?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Agency Representation Agreement between Creative Artists Agency (CAA) and the screenwriter; What percentage commission is payable on podcast rights packages?",
+    "label": "unanswerable"
+  },
+  {
+    "query": "Consider the Semiconductor Supply Agreement between Taiwan Semiconductor Manufacturing Co. (TSMC) and NVIDIA Corporation; What is the wafer allocation priority during supply shortages?",
+    "label": "unanswerable"
+  }
 ]
-
