@@ -14,7 +14,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import PipelineConfig, CONFIGS_DIR, DATA_DIR
-from src.data.loader import load_benchmark, download_dataset, validate_offsets
+from src.data.loader import (
+    load_benchmark,
+    download_dataset,
+    validate_offsets,
+    load_unanswerable_queries,
+)
 from src.data.splitter import split_queries, split_summary
 from src.retrieval.pipeline import RetrievalPipeline
 from src.evaluation.evaluator import Evaluator
@@ -103,13 +108,7 @@ def evaluate(config, split):
             cfg = PipelineConfig()
 
     queries = load_benchmark()
-
-    # Load unanswerable queries
-    unanswerable_path = DATA_DIR / "unanswerable_queries.json"
-    unanswerable = []
-    if unanswerable_path.exists():
-        with open(unanswerable_path, "r", encoding="utf-8") as f:
-            unanswerable = json.load(f)
+    unanswerable = load_unanswerable_queries(include_extra=True)
 
     pipeline = RetrievalPipeline(cfg)
     pipeline.build_index(queries)
@@ -126,18 +125,17 @@ def improve(max_iterations):
     from src.improvement.loop import ImprovementLoop
 
     queries = load_benchmark()
+    unanswerable = load_unanswerable_queries(include_extra=True)
 
-    unanswerable_path = DATA_DIR / "unanswerable_queries.json"
-    unanswerable = []
-    if unanswerable_path.exists():
-        with open(unanswerable_path, "r", encoding="utf-8") as f:
-            unanswerable = json.load(f)
-
-    baseline_path = CONFIGS_DIR / "baseline.yaml"
-    if baseline_path.exists():
-        initial_config = PipelineConfig.load(baseline_path)
+    final_path = CONFIGS_DIR / "final.yaml"
+    if final_path.exists():
+        initial_config = PipelineConfig.load(final_path)
     else:
-        initial_config = PipelineConfig(name="baseline")
+        baseline_path = CONFIGS_DIR / "baseline.yaml"
+        if baseline_path.exists():
+            initial_config = PipelineConfig.load(baseline_path)
+        else:
+            initial_config = PipelineConfig(name="baseline")
 
     loop = ImprovementLoop(
         queries=queries,

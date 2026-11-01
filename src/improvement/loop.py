@@ -3,13 +3,13 @@ Self-improvement loop orchestrator.
 
 Runs the iterative improvement process: evaluate current config, diagnose
 failures, propose changes, test proposals, accept or reject based on metrics.
-All iterations are logged with full details.
+All iterations are logged with full details to logs/experiment_log.jsonl.
 """
 
 import json
 import time
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from pathlib import Path
 
 from src.config import PipelineConfig, LOGS_DIR, CONFIGS_DIR
@@ -32,32 +32,33 @@ class IterationLog:
     accepted: bool
     reason: str
     timestamp: str = ""
+    proposed_by: str = "diagnosis"
+    run_label: str = "v2"
 
 
 class ImprovementLoop:
     """
     Orchestrates the self-improvement process.
-    
-    Primary metric: Mean Recall@5 on train set (we want to find all relevant
-    passages, and k=5 is a practical number of results for a user).
-    
+
+    Primary metric: Mean F1@5 on the training split.
+
     Guardrail metrics that must not degrade meaningfully:
-    1. Mean Precision@5 must not drop by more than 0.05
-    2. Abstention rate on unanswerable must stay above 0.5
-    3. False abstention rate on answerable must stay below 0.15
+    1. Mean Precision@5 must not drop by more than 10 percent relative
+    2. Abstention rate on answerable queries must stay below 0.15
+    3. In-corpus unanswerable abstention rate must not decrease
+    4. Minimum primary metric gain of 0.005 required to accept
     """
 
-    PRIMARY_METRIC = "mean_recall_at_5"
-    PRECISION_GUARDRAIL = "mean_precision_at_5"
-    MAX_PRECISION_DROP = 0.05
-    MIN_UNANSWERABLE_ABSTENTION = 0.5
+    PRIMARY_METRIC = "mean_f1_at_5"
+    MAX_RELATIVE_PRECISION_DROP = 0.10
     MAX_ANSWERABLE_ABSTENTION = 0.15
+    MIN_F1_GAIN = 0.005
 
     def __init__(
         self,
         queries: List[dict],
         unanswerable_queries: Optional[List[dict]] = None,
-        max_iterations: int = 10,
+        max_iterations: int = 6,
         log_path: Optional[Path] = None,
     ):
         self.queries = queries
@@ -69,31 +70,55 @@ class ImprovementLoop:
         self.best_config: Optional[PipelineConfig] = None
         self.best_metrics: Optional[EvaluationResults] = None
 
+    def _get_existing_iterations(self) -> List[dict]:
+        """Read existing entries from experiment_log.jsonl if present."""
+        if not self.log_path.exists():
+            return []
+        entries = []
+        with open(self.log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        entries.append(json.loads(line))
+                    except Exception:
+                        pass
+        return entries
+
     def run(self, initial_config: PipelineConfig, verbose: bool = True) -> PipelineConfig:
         """
-        Run the full improvement loop starting from the initial configuration.
-        
-        Returns the best configuration found.
+        Run the iterative improvement loop starting from initial_config.
+        Evaluates strictly on the training split.
+        Appends new iteration logs to experiment_log.jsonl.
+        Saves the best configuration to configs/final_v2.yaml.
         """
+        existing_entries = self._get_existing_iterations()
+        start_iteration = 1
+        if existing_entries:
+            max_existing = max(e.get("iteration", 0) for e in existing_entries)
+            start_iteration = max_existing + 1
+
         if verbose:
             print("=" * 60)
-            print("SELF-IMPROVEMENT LOOP")
+            print("SELF IMPROVEMENT LOOP (v2)")
             print("=" * 60)
+            print(f"Starting iteration: {start_iteration}")
+            print(f"Max new iterations: {self.max_iterations}")
             print(f"Primary metric: {self.PRIMARY_METRIC}")
-            print(f"Guardrails: precision drop < {self.MAX_PRECISION_DROP}, "
-                  f"unanswerable abstention > {self.MIN_UNANSWERABLE_ABSTENTION}, "
-                  f"answerable abstention < {self.MAX_ANSWERABLE_ABSTENTION}")
+            print(f"Guardrails: relative precision drop < 10%, "
+                  f"answerable abstention < {self.MAX_ANSWERABLE_ABSTENTION}, "
+                  f"in corpus abstention non decreasing")
             print("=" * 60)
 
-        # Step 1: Evaluate baseline
+        # Evaluate the starting configuration on train
         if verbose:
-            print("\n--- Baseline Evaluation ---")
-        
-        baseline_pipeline = RetrievalPipeline(initial_config)
-        baseline_pipeline.build_index(self.queries)
-        
-        evaluator = Evaluator(baseline_pipeline)
-        baseline_results = evaluator.evaluate(
+            print(f"\n--- Initial Configuration Evaluation ({initial_config.name}) ---")
+
+        current_pipeline = RetrievalPipeline(initial_config)
+        current_pipeline.build_index(self.queries)
+
+        evaluator = Evaluator(current_pipeline)
+        current_results = evaluator.evaluate(
             self.queries,
             self.unanswerable_queries,
             split="train",
@@ -101,79 +126,64 @@ class ImprovementLoop:
         )
 
         self.best_config = initial_config
-        self.best_metrics = baseline_results
-
-        # Save baseline config
-        initial_config.save(CONFIGS_DIR / "baseline.yaml")
-
-        # Log baseline entry
-        baseline_log = IterationLog(
-            iteration=0,
-            proposal_name="baseline",
-            rationale="Initial baseline configuration: fixed 512-character chunking, dense retrieval, no routing, no reranker, raw cosine threshold 0.3.",
-            config=initial_config.to_dict(),
-            metrics_before={},
-            metrics_after=baseline_results.to_dict(),
-            diagnosis_summary="Initial baseline evaluation across training split.",
-            accepted=True,
-            reason="Initial baseline configuration",
-            timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
-        )
-        self._log_iteration(baseline_log)
+        self.best_metrics = current_results
 
         tried_proposals = set()
+        # Collect previously tried proposal names from history
+        for e in existing_entries:
+            p_name = e.get("proposal_name")
+            if p_name:
+                tried_proposals.add(p_name)
 
-        for iteration in range(1, self.max_iterations + 1):
+        end_iteration = start_iteration + self.max_iterations
+
+        for iteration in range(start_iteration, end_iteration):
             if verbose:
                 print(f"\n--- Iteration {iteration} ---")
 
-            # Step 2: Diagnose failures
+            # Diagnose current failures
             answerable_results = [
-                qr for qr in baseline_results.query_results if qr.gold_spans
+                qr for qr in self.best_metrics.query_results if qr.gold_spans
             ]
             unanswerable_results = [
-                qr for qr in baseline_results.query_results if not qr.gold_spans
+                qr for qr in self.best_metrics.query_results if not qr.gold_spans
             ]
             diagnosis = diagnose(answerable_results, unanswerable_results)
 
             if verbose:
                 print(f"\nDiagnosis:\n{diagnosis.summary()}")
 
-            # Step 3: Generate proposals
+            # Generate proposals
             proposals = generate_proposals(self.best_config, diagnosis, iteration)
-            
-            # Filter out already-tried proposals
             proposals = [p for p in proposals if p.name not in tried_proposals]
 
             if not proposals:
                 if verbose:
-                    print("No new proposals to try. Stopping.")
+                    print("No further proposals to evaluate; stopping loop.")
                 break
 
-            # Step 4: Try the top proposal
             proposal = proposals[0]
             tried_proposals.add(proposal.name)
 
             if verbose:
-                print(f"\nProposal: {proposal.name}")
+                print(f"\nSelected Proposal: {proposal.name}")
+                print(f"Proposed by: {proposal.proposed_by}")
                 print(f"Rationale: {proposal.rationale}")
 
-            # Build and evaluate the new pipeline
             try:
-                new_pipeline = RetrievalPipeline(proposal.config)
-                new_pipeline.build_index(self.queries)
+                candidate_pipeline = RetrievalPipeline(proposal.config)
+                candidate_pipeline.build_index(self.queries)
 
-                new_evaluator = Evaluator(new_pipeline)
-                new_results = new_evaluator.evaluate(
+                candidate_evaluator = Evaluator(candidate_pipeline)
+                candidate_results = candidate_evaluator.evaluate(
                     self.queries,
                     self.unanswerable_queries,
                     split="train",
                     verbose=verbose,
                 )
 
-                # Step 5: Accept or reject
                 accepted, reason = self._should_accept(
-                    self.best_metrics, new_results
+                    self.best_metrics, candidate_results
                 )
 
                 log_entry = IterationLog(
@@ -182,11 +192,13 @@ class ImprovementLoop:
                     rationale=proposal.rationale,
                     config=proposal.config.to_dict(),
                     metrics_before=self.best_metrics.to_dict(),
-                    metrics_after=new_results.to_dict(),
+                    metrics_after=candidate_results.to_dict(),
                     diagnosis_summary=diagnosis.summary(),
                     accepted=accepted,
                     reason=reason,
                     timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    proposed_by=proposal.proposed_by,
+                    run_label="v2",
                 )
 
                 self._log_iteration(log_entry)
@@ -195,8 +207,9 @@ class ImprovementLoop:
                     if verbose:
                         print(f"ACCEPTED: {reason}")
                     self.best_config = proposal.config
-                    self.best_metrics = new_results
-                    baseline_results = new_results  # use new results for next diagnosis
+                    self.best_metrics = candidate_results
+                    # Save intermediate checkpoint
+                    self.best_config.save(CONFIGS_DIR / "final_v2.yaml")
                 else:
                     if verbose:
                         print(f"REJECTED: {reason}")
@@ -215,14 +228,16 @@ class ImprovementLoop:
                     accepted=False,
                     reason=f"Error during evaluation: {str(e)}",
                     timestamp=time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    proposed_by=proposal.proposed_by,
+                    run_label="v2",
                 )
                 self._log_iteration(log_entry)
 
-        # Save final config
+        # Save final v2 config
         if self.best_config:
-            self.best_config.save(CONFIGS_DIR / "final.yaml")
+            self.best_config.save(CONFIGS_DIR / "final_v2.yaml")
             if verbose:
-                print(f"\nBest configuration saved to {CONFIGS_DIR / 'final.yaml'}")
+                print(f"\nBest v2 configuration saved to {CONFIGS_DIR / 'final_v2.yaml'}")
 
         return self.best_config
 
@@ -230,62 +245,70 @@ class ImprovementLoop:
         self,
         current: EvaluationResults,
         candidate: EvaluationResults,
-    ) -> tuple:
+    ) -> Tuple[bool, str]:
         """
-        Decide whether to accept a new configuration.
-        
-        Returns (accepted: bool, reason: str).
+        Decide whether to accept candidate configuration based on F1@5 and guardrails.
         """
-        current_primary = current.mean_recall_at.get(5, 0)
-        candidate_primary = candidate.mean_recall_at.get(5, 0)
+        current_f1 = current.mean_f1_at.get(5, 0.0)
+        candidate_f1 = candidate.mean_f1_at.get(5, 0.0)
 
-        current_precision = current.mean_precision_at.get(5, 0)
-        candidate_precision = candidate.mean_precision_at.get(5, 0)
+        current_precision = current.mean_precision_at.get(5, 0.0)
+        candidate_precision = candidate.mean_precision_at.get(5, 0.0)
 
-        # Check guardrails
-        precision_drop = current_precision - candidate_precision
-        if precision_drop > self.MAX_PRECISION_DROP:
-            return False, (
-                f"Precision@5 dropped by {precision_drop:.4f} "
-                f"(from {current_precision:.4f} to {candidate_precision:.4f}), "
-                f"exceeding max drop of {self.MAX_PRECISION_DROP}"
-            )
-
+        # Guardrail 1: Answerable false abstention must be below 0.15
         if candidate.abstention_rate_answerable > self.MAX_ANSWERABLE_ABSTENTION:
             return False, (
                 f"Answerable abstention rate is {candidate.abstention_rate_answerable:.4f}, "
-                f"exceeding max of {self.MAX_ANSWERABLE_ABSTENTION}"
+                f"exceeding maximum permitted {self.MAX_ANSWERABLE_ABSTENTION}"
             )
 
-        # Check unanswerable abstention improvement
-        unanswerable_gain = candidate.abstention_rate_unanswerable - current.abstention_rate_unanswerable
-        if unanswerable_gain >= 0.10 and candidate_primary >= current_primary - 0.02:
-            return True, (
-                f"Abstention on unanswerable improved from {current.abstention_rate_unanswerable:.4f} "
-                f"to {candidate.abstention_rate_unanswerable:.4f} (+{unanswerable_gain:.4f}) with stable recall"
-            )
-
-        # Check primary metric improvement
-        if candidate_primary > current_primary:
-            return True, (
-                f"Recall@5 improved from {current_primary:.4f} to {candidate_primary:.4f} "
-                f"(+{candidate_primary - current_primary:.4f})"
-            )
-        elif candidate_primary == current_primary:
-            # Accept if precision improved at same recall
-            if candidate_precision > current_precision:
-                return True, (
-                    f"Recall@5 unchanged at {current_primary:.4f}, but "
-                    f"Precision@5 improved from {current_precision:.4f} to {candidate_precision:.4f}"
+        # Guardrail 2: Relative precision drop must not exceed 10%
+        if current_precision > 0:
+            rel_precision_drop = (current_precision - candidate_precision) / current_precision
+            if rel_precision_drop > self.MAX_RELATIVE_PRECISION_DROP:
+                return False, (
+                    f"Precision@5 dropped by {rel_precision_drop * 100:.1f}% relative "
+                    f"(from {current_precision:.4f} to {candidate_precision:.4f}), "
+                    f"exceeding max allowable drop of 10%"
                 )
+
+        # Guardrail 3: In corpus unanswerable abstention must not decrease
+        current_in_corpus = current.abstention_rate_unanswerable_in_corpus
+        candidate_in_corpus = candidate.abstention_rate_unanswerable_in_corpus
+        if candidate_in_corpus < current_in_corpus - 1e-4:
             return False, (
-                f"Recall@5 unchanged at {current_primary:.4f} with no precision improvement"
+                f"In corpus unanswerable abstention decreased from {current_in_corpus:.4f} "
+                f"to {candidate_in_corpus:.4f}"
             )
-        else:
-            return False, (
-                f"Recall@5 decreased from {current_primary:.4f} to {candidate_primary:.4f} "
-                f"({candidate_primary - current_primary:.4f})"
+
+        # Primary metric evaluation
+        f1_gain = candidate_f1 - current_f1
+
+        # Case A: F1@5 improved by at least MIN_F1_GAIN
+        if f1_gain >= self.MIN_F1_GAIN:
+            return True, (
+                f"F1@5 improved from {current_f1:.4f} to {candidate_f1:.4f} (+{f1_gain:.4f})"
             )
+
+        # Case B: Significant in corpus abstention improvement with stable F1
+        in_corpus_gain = candidate_in_corpus - current_in_corpus
+        if in_corpus_gain >= 0.05 and candidate_f1 >= current_f1 - 0.005:
+            return True, (
+                f"In corpus unanswerable abstention improved from {current_in_corpus:.4f} "
+                f"to {candidate_in_corpus:.4f} (+{in_corpus_gain:.4f}) with stable F1@5 ({candidate_f1:.4f})"
+            )
+
+        # Case C: Recall or precision improved with equal F1
+        if candidate_f1 >= current_f1 and candidate_precision > current_precision:
+            return True, (
+                f"F1@5 maintained at {candidate_f1:.4f} while Precision@5 improved "
+                f"from {current_precision:.4f} to {candidate_precision:.4f}"
+            )
+
+        return False, (
+            f"F1@5 gain {f1_gain:.4f} is below minimum threshold of {self.MIN_F1_GAIN} "
+            f"(current {current_f1:.4f}, candidate {candidate_f1:.4f})"
+        )
 
     def _log_iteration(self, log_entry: IterationLog):
         """Append an iteration log entry to the experiment log file."""

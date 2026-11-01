@@ -10,6 +10,10 @@ from typing import List
 from src.config import AbstentionConfig
 
 
+def _get_score(item) -> float:
+    return item.score if hasattr(item, "score") else float(item)
+
+
 def should_abstain(results: List, config: AbstentionConfig) -> bool:
     """
     Decide whether to abstain from returning results.
@@ -19,7 +23,7 @@ def should_abstain(results: List, config: AbstentionConfig) -> bool:
     contracts.
     
     Args:
-        results: List of RetrievalResult objects, sorted by descending score.
+        results: List of RetrievalResult objects or score items, sorted by descending score.
         config: Abstention configuration with threshold and gap parameters.
     
     Returns:
@@ -31,7 +35,7 @@ def should_abstain(results: List, config: AbstentionConfig) -> bool:
     if not config.enabled:
         return False
 
-    top_score = results[0].score
+    top_score = _get_score(results[0])
 
     # Select threshold based on configuration
     if getattr(config, "use_reranker_score", False):
@@ -47,6 +51,13 @@ def should_abstain(results: List, config: AbstentionConfig) -> bool:
     if config.min_gap > 0:
         gap = top_score - threshold
         if gap < config.min_gap:
+            return True
+
+    # Abstain if margin between top-1 and top-2 candidate is below margin_threshold
+    margin_threshold = getattr(config, "margin_threshold", 0.0)
+    if margin_threshold > 0 and len(results) >= 2:
+        margin = _get_score(results[0]) - _get_score(results[1])
+        if margin < margin_threshold:
             return True
 
     return False

@@ -65,7 +65,7 @@ class VectorIndex:
             return []
 
         query_embedding = query_embedding.reshape(1, -1).astype(np.float32)
-        search_k = min(self.index.ntotal, max(top_k * 20, 200)) if filter_file else min(top_k, self.index.ntotal)
+        search_k = min(self.index.ntotal, max(top_k * 30, 2000)) if filter_file else min(top_k, self.index.ntotal)
         scores, indices = self.index.search(query_embedding, search_k)
 
         results = []

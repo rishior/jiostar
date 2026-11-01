@@ -192,5 +192,43 @@ def download_dataset():
     return queries
 
 
+def load_unanswerable_queries(include_extra: bool = True) -> List[dict]:
+    """
+    Load unanswerable query sets.
+
+    Includes data/unanswerable_queries.json and optionally data/unanswerable_extra.json.
+    Tags each item with in_corpus_contract (bool).
+    """
+    base_file = DATA_DIR / "unanswerable_queries.json"
+    extra_file = DATA_DIR / "unanswerable_extra.json"
+
+    queries = []
+    if base_file.exists():
+        with open(base_file, "r", encoding="utf-8") as f:
+            base_list = json.load(f)
+        for item in base_list:
+            d = dict(item)
+            if "in_corpus_contract" not in d:
+                # 5 of the 35 queries in unanswerable_queries.json name an in-corpus document
+                # Check whether query names an in-corpus document via router pattern
+                txt = d["query"].lower()
+                is_in = (
+                    "bicycletx" in txt or "fox mobile" in txt or "theravance" in txt or
+                    "glu mobile" in txt or "loop industries" in txt or "pcquote" in txt
+                )
+                d["in_corpus_contract"] = is_in
+            queries.append(d)
+
+    if include_extra and extra_file.exists():
+        with open(extra_file, "r", encoding="utf-8") as f:
+            extra_list = json.load(f)
+        for item in extra_list:
+            d = dict(item)
+            d["in_corpus_contract"] = True
+            queries.append(d)
+
+    return queries
+
+
 if __name__ == "__main__":
     download_dataset()

@@ -17,6 +17,7 @@ class ChunkingConfig:
     chunk_size: int = 512            # characters
     overlap: int = 128               # characters of overlap between chunks
     min_chunk_size: int = 50         # discard chunks smaller than this
+    heading_aware: bool = False      # whether to extract clause headings and prepend to embedding text
 
 
 @dataclass
@@ -30,12 +31,17 @@ class EmbeddingConfig:
 class RetrievalConfig:
     top_k: int = 10                  # number of candidates to retrieve
     use_routing: bool = True         # whether to route queries to candidate contract
+    strip_query_prefix: bool = False # whether to strip agreement title prefix from search query
     use_bm25: bool = False           # whether to include BM25 scores
     bm25_weight: float = 0.3         # weight for BM25 in hybrid scoring
     dense_weight: float = 0.7        # weight for dense embeddings
+    use_rrf: bool = True             # whether to fuse dense and BM25 via Reciprocal Rank Fusion
+    rrf_k: int = 60                  # RRF constant k
     use_reranker: bool = False       # whether to apply cross-encoder reranking
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_top_k: int = 30           # number of candidates passed to reranker
+    downweight_preamble: bool = False # downweight chunks starting at offset 0
+    preamble_weight: float = 0.8     # score multiplier for offset 0 chunks
 
 
 @dataclass
@@ -43,6 +49,7 @@ class AbstentionConfig:
     enabled: bool = True
     score_threshold: float = 0.3     # minimum score to return a result (for dense/hybrid)
     min_gap: float = 0.0             # minimum gap between top score and threshold
+    margin_threshold: float = 0.0    # minimum margin between top-1 and top-2 candidate scores
     use_reranker_score: bool = False # whether to threshold on cross-encoder score
     reranker_threshold: float = -1.0 # minimum cross-encoder logit score to return result
 

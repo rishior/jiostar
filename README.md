@@ -53,13 +53,13 @@ python run.py query "Consider the Master Services Agreement between Netflix Inc.
 Run evaluation on the train split:
 
 ```bash
-python run.py evaluate --config configs/final.yaml --split train
+python run.py evaluate --config configs/final_v2.yaml --split train
 ```
 
 Run evaluation on the test split:
 
 ```bash
-python run.py evaluate --config configs/final.yaml --split test
+python run.py evaluate --config configs/final_v2.yaml --split test
 ```
 
 Execute the self improvement loop:
@@ -110,7 +110,7 @@ or via the Python module runner:
 python -m pytest
 ```
 
-All 47 unit and integration tests covering chunking offset fidelity, character level metric computations, train test hash partitioning, abstention thresholding, document routing, and pipeline integration will execute.
+All 62 unit and integration tests covering chunking offset fidelity, character level metric computations, train test hash partitioning, abstention thresholding, document routing, query prefix stripping, heading extraction, and pipeline integration will execute.
 
 ## Architecture
 
@@ -160,17 +160,17 @@ To reproduce reported benchmark metrics from a fresh environment:
    ```bash
    python run.py test
    ```
-   Approximate time: 5 seconds. All 47 tests pass.
+   Approximate time: 5 seconds. All 62 tests pass.
 
 5. Run evaluation on train partition:
    ```bash
-   python run.py evaluate --config configs/final.yaml --split train
+   python run.py evaluate --config configs/final_v2.yaml --split train
    ```
    Approximate time: 5 seconds (uses cached index).
 
 6. Run evaluation on held out test partition:
    ```bash
-   python run.py evaluate --config configs/final.yaml --split test
+   python run.py evaluate --config configs/final_v2.yaml --split test
    ```
    Approximate time: 4 seconds (uses cached index).
 

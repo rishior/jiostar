@@ -28,16 +28,19 @@ class CrossEncoderReranker:
         scores = self.model.predict(pairs)
 
         from src.retrieval.pipeline import RetrievalResult
+        import numpy as np
 
         reranked = []
         for r, score in zip(results, scores):
+            # Sigmoid normalization maps logits to calibrated [0, 1] probabilities
+            prob = float(1.0 / (1.0 + np.exp(-float(score))))
             reranked.append(
                 RetrievalResult(
                     text=r.text,
                     file_path=r.file_path,
                     start=r.start,
                     end=r.end,
-                    score=float(score),
+                    score=prob,
                     chunk_id=r.chunk_id,
                 )
             )

@@ -15,12 +15,15 @@ from collections import Counter
 class DiagnosisResult:
     """Diagnosis of evaluation failures."""
     total_queries: int = 0
-    wrong_document: int = 0        # retrieved doc does not contain gold span
-    wrong_section: int = 0         # right doc but wrong section
-    partial_overlap: int = 0       # right section but span only partly covered
-    incorrect_abstention: int = 0  # system abstained on answerable query
-    incorrect_retrieval: int = 0   # system returned results for unanswerable
-    perfect_match: int = 0         # full overlap with gold span
+    wrong_document: int = 0                 # retrieved doc does not contain gold span
+    wrong_section: int = 0                  # right doc but wrong section
+    partial_overlap: int = 0                # right section but span only partly covered
+    incorrect_abstention: int = 0           # system abstained on answerable query
+    incorrect_retrieval: int = 0            # system returned results for unanswerable
+    incorrect_retrieval_in_corpus: int = 0  # in-corpus near-miss failure
+    incorrect_retrieval_out_of_corpus: int = 0
+    preamble_at_rank_1: int = 0             # rank 1 chunk starts at offset 0
+    perfect_match: int = 0                  # full overlap with gold span
     
     examples: Dict[str, List[dict]] = field(default_factory=lambda: {
         "wrong_document": [],
@@ -28,6 +31,7 @@ class DiagnosisResult:
         "partial_overlap": [],
         "incorrect_abstention": [],
         "incorrect_retrieval": [],
+        "preamble_at_rank_1": [],
     })
 
     def summary(self) -> str:
@@ -37,28 +41,29 @@ class DiagnosisResult:
         lines.append(f"Wrong document: {self.wrong_document}")
         lines.append(f"Wrong section: {self.wrong_section}")
         lines.append(f"Partial overlap: {self.partial_overlap}")
-        lines.append(f"Incorrect abstention: {self.incorrect_abstention}")
-        lines.append(f"Incorrect retrieval (unanswerable): {self.incorrect_retrieval}")
+        lines.append(f"Preamble at Rank 1 (offset 0): {self.preamble_at_rank_1}")
+        lines.append(f"Incorrect abstention (false neg): {self.incorrect_abstention}")
+        lines.append(f"Incorrect retrieval (unanswerable total): {self.incorrect_retrieval}")
+        lines.append(f"  - In-corpus near-misses: {self.incorrect_retrieval_in_corpus}")
+        lines.append(f"  - Out-of-corpus contracts: {self.incorrect_retrieval_out_of_corpus}")
         return "\n".join(lines)
 
 
 def diagnose(query_results: List, unanswerable_results: Optional[List] = None) -> DiagnosisResult:
     """
     Analyze evaluation results to categorize failures.
-    
-    For each answerable query, determines whether the failure was due to:
-    1. Wrong document: no retrieved chunk comes from a document containing gold spans
-    2. Wrong section: right document but retrieved chunk does not overlap with gold
-    3. Partial overlap: some overlap but incomplete coverage
-    4. Incorrect abstention: system returned nothing for an answerable query
-    
-    For unanswerable queries, checks if the system incorrectly returned results.
     """
     diagnosis = DiagnosisResult()
     
     for qr in query_results:
         diagnosis.total_queries += 1
         
+        if getattr(qr, "rank1_is_offset0", False):
+            diagnosis.preamble_at_rank_1 += 1
+            diagnosis.examples["preamble_at_rank_1"].append({
+                "query": qr.query,
+            })
+
         if qr.abstained and qr.gold_spans:
             diagnosis.incorrect_abstention += 1
             diagnosis.examples["incorrect_abstention"].append({
@@ -71,10 +76,9 @@ def diagnose(query_results: List, unanswerable_results: Optional[List] = None) -
             continue
         
         gold_files = set(s[0] for s in qr.gold_spans)
-        retrieved_files = set(s[0] for s in qr.retrieved_spans)
+        retrieved_files = set(s[0] for s in qr.retrieved_spans[:5])
         
-        # Check if any retrieved document matches a gold document
-        if not gold_files & retrieved_files:
+        if not (gold_files & retrieved_files):
             diagnosis.wrong_document += 1
             diagnosis.examples["wrong_document"].append({
                 "query": qr.query,
@@ -90,7 +94,7 @@ def diagnose(query_results: List, unanswerable_results: Optional[List] = None) -
                 gold_chars.add((fp, pos))
         
         retrieved_chars = set()
-        for fp, s, e in qr.retrieved_spans:
+        for fp, s, e in qr.retrieved_spans[:5]:
             for pos in range(s, e):
                 retrieved_chars.add((fp, pos))
         
@@ -118,9 +122,14 @@ def diagnose(query_results: List, unanswerable_results: Optional[List] = None) -
             diagnosis.total_queries += 1
             if not qr.abstained:
                 diagnosis.incorrect_retrieval += 1
+                is_in = getattr(qr, "in_corpus_contract", False)
+                if is_in:
+                    diagnosis.incorrect_retrieval_in_corpus += 1
+                else:
+                    diagnosis.incorrect_retrieval_out_of_corpus += 1
                 diagnosis.examples["incorrect_retrieval"].append({
                     "query": qr.query,
-                    "top_score": qr.scores[0] if qr.scores else 0,
+                    "in_corpus": is_in,
                 })
-    
+
     return diagnosis
