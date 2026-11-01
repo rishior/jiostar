@@ -1,0 +1,212 @@
+[
+  {
+    "query": "Consider the Service Agreement between BicycleTX Ltd and Nigel Crockett for Chief Business Officer Position; Does this contract specify requirements for cryptocurrency payment of executive bonuses?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/BICYCLETHERAPEUTICSPLC_03_10_2020-EX-10.11-SERVICE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Service Agreement between BicycleTX Ltd and Nigel Crockett for Chief Business Officer Position; What are the requirements for company car electric vehicle charging station subsidies in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/BICYCLETHERAPEUTICSPLC_03_10_2020-EX-10.11-SERVICE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Sponsorship Agreement between Jacksonville Jaguars, LLC and The ARC Group, Inc.; Does this agreement require stadium drone delivery rights during home games?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ArcGroupInc_20171211_8-K_EX-10.1_10976103_EX-10.1_Sponsorship Agreement.txt"
+  },
+  {
+    "query": "Consider the Sponsorship Agreement between Jacksonville Jaguars, LLC and The ARC Group, Inc.; What is the revenue share percentage for commemorative NFT ticketing sales?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ArcGroupInc_20171211_8-K_EX-10.1_10976103_EX-10.1_Sponsorship Agreement.txt"
+  },
+  {
+    "query": "Consider the Endorsement Agreement between Papa John's International, Inc. and Shaquille O'Neal; What are the vegan cheese product formulation approval procedures in this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/PapaJohnsInternationalInc_20190617_8-K_EX-10.1_11707365_EX-10.1_Endorsement Agreement.txt"
+  },
+  {
+    "query": "Consider the Endorsement Agreement between Papa John's International, Inc. and Shaquille O'Neal; Is there an obligation to conduct TikTok viral marketing challenges?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/PapaJohnsInternationalInc_20190617_8-K_EX-10.1_11707365_EX-10.1_Endorsement Agreement.txt"
+  },
+  {
+    "query": "Consider the Cooperation Agreement between HPIL ENERGYTECH Inc. and GINARES GROUP AG for Renewable Energy Projects; What are the requirements for purchasing verified carbon offset credits under this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/HPILHOLDING_01_07_2015-EX-99.1-COOPERATION AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Cooperation Agreement between HPIL ENERGYTECH Inc. and GINARES GROUP AG for Renewable Energy Projects; Does this contract specify solar panel recycling disposal standards upon decommissioning?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/HPILHOLDING_01_07_2015-EX-99.1-COOPERATION AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Promotion Agreement between King Pharmaceuticals, Inc. and Depomed, Inc.; What are the GDPR data subject access request response timelines in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/KINGPHARMACEUTICALSINC_08_09_2006-EX-10.1-PROMOTION AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Promotion Agreement between King Pharmaceuticals, Inc. and Depomed, Inc.; What is the cybersecurity breach notification protocol for clinical database incidents?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/KINGPHARMACEUTICALSINC_08_09_2006-EX-10.1-PROMOTION AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Service Agreement between Theravance Biopharma UK Limited and Brett Haumann; What is the executive paternity leave policy and childcare subsidy schedule in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/THERAVANCEBIOPHARMA,INC_05_08_2020-EX-10.2-SERVICE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Service Agreement between Theravance Biopharma UK Limited and Brett Haumann; Are there carbon footprint emission reduction covenants for business air travel?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/THERAVANCEBIOPHARMA,INC_05_08_2020-EX-10.2-SERVICE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Marketing Agreement between Loop Industries, Inc. and its promotional partner; Does this contract require microplastic ocean filtration compliance certifications?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/Loop Industries, Inc. - Marketing Agreement.txt"
+  },
+  {
+    "query": "Consider the Marketing Agreement between Loop Industries, Inc. and its promotional partner; What are the escrow terms for algorithmic dynamic advertising bidding under this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/Loop Industries, Inc. - Marketing Agreement.txt"
+  },
+  {
+    "query": "Consider the Transportation Services Agreement between Dynamex Inc. and its customer; What electric vehicle fleet transition targets are established in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/DYNAMEXINC_06_06_1996-EX-10.4-TRANSPORTATION SERVICES AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Transportation Services Agreement between Dynamex Inc. and its customer; What autonomous vehicle freight routing protocols are required under this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/DYNAMEXINC_06_06_1996-EX-10.4-TRANSPORTATION SERVICES AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Strategic Alliance Agreement between Information System Associates, Inc. and Rubicon Software Group plc; What are the source code escrow audit procedures for neural network weights?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/DUOSTECHNOLOGIESGROUP,INC_04_21_2009-EX-10.1-STRATEGIC ALLIANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Strategic Alliance Agreement between Information System Associates, Inc. and Rubicon Software Group plc; What are the penalties for unauthorized scraping of training data for generative artificial intelligence models?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/DUOSTECHNOLOGIESGROUP,INC_04_21_2009-EX-10.1-STRATEGIC ALLIANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Sponsorship Agreement between Excite, Inc. and Vitamin Shoppe Industries Inc. for Promotion on WebCrawler Channels; What are the voice commerce smart speaker integration standards in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/VITAMINSHOPPECOMINC_09_13_1999-EX-10.26-SPONSORSHIP AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Sponsorship Agreement between Excite, Inc. and Vitamin Shoppe Industries Inc. for Promotion on WebCrawler Channels; Does this contract specify requirements for mobile app push notification frequency limits?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/VITAMINSHOPPECOMINC_09_13_1999-EX-10.26-SPONSORSHIP AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Gas Gathering Agreement between PennTex Midstream Partners, LP and its shipper; What are the methane flaring emission tax pass-through provisions in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/PenntexMidstreamPartnersLp_20150416_S-1A_EX-10.4_9042833_EX-10.4_Transportation Agreement.txt"
+  },
+  {
+    "query": "Consider the Gas Gathering Agreement between PennTex Midstream Partners, LP and its shipper; Does this contract govern hydrogen pipeline blending ratios and conversion testing?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/PenntexMidstreamPartnersLp_20150416_S-1A_EX-10.4_9042833_EX-10.4_Transportation Agreement.txt"
+  },
+  {
+    "query": "Consider the Supply Agreement between Flotek Industries, Inc. and Florida Chemical Company; What are the blockchain batch traceability tracking mandates under this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/FLOTEKINDUSTRIESINCCN_05_09_2019-EX-10.1-SUPPLY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Supply Agreement between Flotek Industries, Inc. and Florida Chemical Company; What are the water scarcity rationing priorities for chemical processing facilities?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/FLOTEKINDUSTRIESINCCN_05_09_2019-EX-10.1-SUPPLY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Collaboration Agreement between Sucampo Pharmaceuticals, Inc. and Mallinckrodt LLC; What are the biosimilar competition revenue adjustment mechanisms in this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Collaboration Agreement between Sucampo Pharmaceuticals, Inc. and Mallinckrodt LLC; Does this contract specify requirements for open source medical software contributions?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/SUCAMPOPHARMACEUTICALS,INC_11_04_2015-EX-10.2-STRATEGIC ALLIANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Liquidation Consulting Agreement between The Bon-Ton Stores, Inc. and its liquidation consultant; What are the gift card cryptocurrency conversion procedures under this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/BONTONSTORESINC_04_20_2018-EX-99.3-AGENCY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Liquidation Consulting Agreement between The Bon-Ton Stores, Inc. and its liquidation consultant; What biometric customer facial recognition surveillance safeguards apply in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/BONTONSTORESINC_04_20_2018-EX-99.3-AGENCY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Agency Agreement between ALCO Stores, Inc. and its agent; Does this contract specify solar rooftop installation leases for retail store buildings?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ALCOSTORESINC_12_14_2005-EX-10.26-AGENCY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Agency Agreement between ALCO Stores, Inc. and its agent; What are the automated warehouse robotics maintenance warranties in this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ALCOSTORESINC_12_14_2005-EX-10.26-AGENCY AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Support and Maintenance Agreement between On2 Technologies, Inc. and its client; What quantum computer encryption algorithm upgrades are required under this contract?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ON2TECHNOLOGIES,INC_11_17_2006-EX-10.3-SUPPORT AND MAINTENANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Support and Maintenance Agreement between On2 Technologies, Inc. and its client; What are the synthetic voice cloning actor consent requirements in this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/ON2TECHNOLOGIES,INC_11_17_2006-EX-10.3-SUPPORT AND MAINTENANCE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Joint Venture Agreement between Veoneer, Inc. and its venture partner; What are the quantum computing post-quantum cryptographic algorithm transition deadlines in this agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/VEONEER,INC_02_21_2020-EX-10.11-JOINT VENTURE AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Non-Competition Agreement between Western Copper Corporation and its covenantor; Does this agreement govern spatial metaverse virtual land mining rights concessions?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/WESTERN COPPER - NON-COMPETITION AGREEMENT.txt"
+  },
+  {
+    "query": "Consider the Franchise Agreement between RGC Resources, Inc. and the City of Roanoke; What are the drone utility pipeline inspection flight permission rules under this franchise agreement?",
+    "label": "unanswerable",
+    "in_corpus_contract": true,
+    "target_document": "cuad/RgcResourcesInc_20151216_8-K_EX-10.3_9372751_EX-10.3_Franchise Agreement.txt"
+  }
+]
