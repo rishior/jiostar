@@ -85,7 +85,13 @@ python run.py build-index
 Start the interactive Streamlit user interface:
 
 ```bash
-streamlit run src/app.py
+python run.py app
+```
+
+or directly via Python:
+
+```bash
+python -m streamlit run src/app.py
 ```
 
 The web application provides an intuitive search bar, adjustable top k passage count, document metadata views, and sample legal questions.

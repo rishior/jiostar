@@ -174,5 +174,14 @@ def test(pytest_args):
     sys.exit(pytest.main(args))
 
 
+@cli.command()
+def app():
+    """Launch the interactive Streamlit web application."""
+    import subprocess
+    app_path = Path(__file__).parent / "app.py"
+    cmd = [sys.executable, "-m", "streamlit", "run", str(app_path)]
+    subprocess.run(cmd)
+
+
 if __name__ == "__main__":
     cli()
