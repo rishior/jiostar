@@ -7,15 +7,15 @@ We developed an automated legal clause retrieval and verification system evaluat
 Our final architecture implements entity aware document routing combined with 512 character sliding window chunking, dense vector retrieval using normalized sentence embeddings (`all-MiniLM-L6-v2`), and calibrated cosine thresholding. 
 
 On the held out test partition (65 total queries comprising 54 answerable contract questions and 11 unanswerable queries), our final system achieved:
-- Headline Recall at 5 of 0.1036 (up from 0.0780 in the baseline, a 32.8 percent relative gain)
-- Recall at 10 of 0.3347 (up from 0.2028, a 65.0 percent relative gain)
-- Precision at 5 of 0.0190 (up from 0.0167, a 13.8 percent relative gain)
-- F1 at 5 of 0.0292 (up from 0.0250, a 16.8 percent relative gain)
+- Recall at 5 of 0.1036 (up from 0.0780 in the baseline, a 32.8 percent relative gain)
+- Recall at 10 of 0.3347 (up from 0.2028 in the baseline, a 65.0 percent relative gain)
+- Precision at 5 of 0.0190 (up from 0.0167 in the baseline, a 13.8 percent relative gain)
+- F1 at 5 of 0.0292 (up from 0.0250 in the baseline, a 16.8 percent relative gain)
 - True Negative Abstention rate on unanswerable queries of 36.4 percent (4 out of 11 rejected, up from 0.0 percent in the baseline)
-- Zero false abstentions on answerable queries across both train and test sets
-- Query latency of 58 milliseconds per query (down from 280 milliseconds, a 4.8x acceleration)
+- Zero false abstentions on answerable queries across both train and test partitions
+- Runtime inference latency of 27.9 milliseconds per query (compared to 31.0 milliseconds for unrouted baseline search, an 11 percent speedup when measured back to back in the same process with warm caches)
 
-All parameter tuning, failure analysis, and iterative proposals were developed strictly on the train partition. The test partition was evaluated strictly once for final reporting.
+Across project development, the test partition was evaluated 4 times in total. Three of these runs occurred prior to or during loop refactoring (including an initial evaluation of a 1024 character configuration, disclosed as test peeking), and one was the final evaluation of the converged configuration. None of the test evaluations were used to select configurations in the final 6 iteration self improvement loop, which operated strictly on the train partition.
 
 ## 2. System Architecture
 
@@ -32,18 +32,14 @@ The architecture prioritizes character level fidelity, modular component isolati
 
 1. Unrouted Global Search: The baseline searched across all corpus contracts simultaneously. While functional, top candidates from unrelated contracts frequently outscored the true clause due to generic boilerplate vocabulary (for example, definitions of "affiliates" or "indemnification").
 2. Clause Aware Semantic Segmentation: We implemented structural chunking snapping to numbered clause headers and paragraph breaks (target 400 characters). On the train split, Recall at 5 dropped from 0.2393 to 0.1815 because legal questions match broader contextual provisions that smaller fragments truncated.
-3. Cross Encoder Reranker (`cross-encoder/ms-marco-MiniLM-L-6-v2`): We evaluated a two stage pipeline reranking the top 30 dense candidates with a cross encoder. Although it achieved 83.3 percent true negative abstention on unanswerable queries, Recall at 5 dropped to 0.1562. The MS MARCO weights, trained on general web search, penalized legal boilerplate phrases containing valid legal answers.
-4. Sparse Lexical BM25 Hybrid Fusion: Combining BM25 with dense retrieval via linear score fusion reduced Recall at 5 from 0.2393 to 0.1744. Legal contracts share repetitive formal terminology across clauses, causing lexical search to rank unrelated boilerplate containing exact keyword repetitions above substantive answers.
+3. Cross Encoder Reranker (`cross-encoder/ms-marco-MiniLM-L-6-v2`): We evaluated a two stage pipeline reranking the top 30 dense candidates with a cross encoder. Although it achieved 83.3 percent true negative abstention on unanswerable queries, Recall at 5 dropped to 0.1562. As diagnosed below, this drop was primarily driven by query prompt preamble contamination (the full contract title in the prompt matches the preamble text) and a score threshold scale mismatch.
+4. Sparse Lexical BM25 Hybrid Fusion: Combining BM25 with dense retrieval via linear score fusion reduced Recall at 5 from 0.2393 to 0.1744. As with the reranker, tokenizing the full query string gave excessive BM25 weight to contract title tokens, boosting the preamble block at offset 0 rather than the answering clause.
 
 ## 3. LLM Use
 
 We did not use a Large Language Model within the runtime inference pipeline.
 
-The retrieval pipeline relies on dense sentence transformers, FAISS indexing, document routing, and calibrated score thresholding. This explicit design decision was guided by three considerations:
-
-1. Data Confidentiality and Enterprise Privacy: Commercial media agreements contain confidential licensing terms, distribution guarantees, minimum revenue thresholds, and exclusivity covenants. Transmitting contract text to third party LLM APIs introduces data leakage risks and regulatory liabilities for an enterprise media organization.
-2. Inference Latency and Operational Footprint: The dense retrieval system operates in under 60 milliseconds per query on local CPU hardware without GPU acceleration or cloud API dependencies.
-3. Hallucination Elimination and Legal Auditability: Legal rights administrators require verbatim contractual clauses and source coordinates. Generative language models risk hallucinating terms or altering legal obligations. Direct passage retrieval preserves evidentiary auditability.
+The retrieval pipeline relies on dense sentence transformers, FAISS indexing, document routing, and calibrated score thresholding. This explicit design decision was made to ensure complete data confidentiality for proprietary commercial contracts, to eliminate generative hallucination risk by returning verbatim authentic text spans with exact offsets, and to maintain deterministic sub 50 millisecond CPU latency.
 
 An AI coding assistant was utilized strictly as an offline software engineering aid for generating boilerplate test fixtures, formatting Markdown tables, and drafting synthetic out of domain queries.
 
@@ -74,28 +70,32 @@ The partition yields:
 - Test Split: 54 answerable queries (27.8 percent)
 - Corpus Scope: 29 unique commercial agreements totaling 2,686,303 characters
 
-### Unanswerable Query Methodology
+### Unanswerable Query Methodology and Dataset History
 
-To rigorously evaluate abstention, we authored 35 out of domain and adversarial unanswerable queries. These include realistic near miss queries regarding absent covenants (such as cryptocurrency settlements, GDPR data sovereignty, carbon offset mandates, and drone transit) as well as questions naming entities outside the contract corpus.
+To rigorously evaluate abstention, two successive 35 query unanswerable sets were developed:
 
-Applying the identical SHA256 partition yields:
-- Train Unanswerable: 24 queries (68.6 percent)
-- Test Unanswerable: 11 queries (31.4 percent)
+1. Initial Set (`v1_absurd`, commit `a3990db`): Authored early in development, containing speculative topics (for example: broadcasting on Mars, Klingon translation, holographic theaters). Under SHA256 partitioning, this partitioned into 23 train and 12 test queries.
+2. Final Set (`v2_near_miss`, commit `b274824`): Committed prior to executing the 6 iteration self improvement loop. This set replaced absurd topics with realistic legal near misses (for example: cryptocurrency settlements, GDPR data sovereignty, carbon offset mandates, drone transit, and out of corpus agreements such as Netflix and Sony). Under SHA256 partitioning, this partitions into 24 train and 11 test queries.
 
 Abstention is measured along two complementary axes:
 - True Negative Abstention Rate: Proportion of unanswerable queries where the system correctly abstains.
 - False Negative Abstention Rate: Proportion of answerable benchmark queries where the system incorrectly abstains.
 
-### Protocol Integrity and Test Run Count
+### Protocol Integrity and Test Run Disclosure
 
-To prevent data snooping and overfitting:
-- All exploratory analysis, failure diagnosis, and configuration proposals were executed exclusively on the train split.
-- The test split was evaluated strictly once on the baseline configuration and strictly once on the final configuration, for a total test run count of 1 for final verification.
-- Zero test split runs were used to select or tune configurations.
+To maintain scientific transparency, all test split evaluations across the lifetime of the repository are tracked in `logs/test_runs.jsonl`:
+
+- Total Test Runs: 4 evaluations.
+- Run 1 (2026-11-01 14:25): Baseline test evaluation on v1 set (65 queries, Recall at 5 = 0.0780, Abstention = 0.0).
+- Run 2 (2026-11-01 16:33): Manual 1024 chunk test evaluation on v1 set (66 queries, Recall at 5 = 0.2195, Abstention = 0.1667). Disclosed as test peeking prior to loop formalization.
+- Run 3 (2026-11-01 18:53): Baseline re evaluation on v2 set (65 queries, Recall at 5 = 0.0780, Abstention = 0.0).
+- Run 4 (2026-11-01 18:55): Final evaluation of converged configuration on v2 set (65 queries, Recall at 5 = 0.1036, Abstention = 0.3636).
+
+None of these test split runs were used to select or tune configurations within the 6 iteration improvement loop. All 6 loop iterations operated strictly on the train partition.
 
 ## 5. Evaluation Results
 
-The tables below contrast the Baseline configuration against the Final configuration across both splits.
+The tables below contrast the Baseline configuration against the Final configuration across both partitions.
 
 ### Train Split Evaluation (140 Answerable, 24 Unanswerable)
 
@@ -115,7 +115,7 @@ The tables below contrast the Baseline configuration against the Final configura
 | F1 at 10 | 0.0560 | 0.0734 | +0.0174 | +31.1% |
 | False Negatives (Answerable Abstain) | 0.0000 | 0.0000 | 0.0000 | 0.0% |
 | True Negatives (Unanswerable Abstain) | 0.0000 | 0.7917 | +0.7917 | Infinite |
-| Inference Time | 12.2s | 5.4s | -6.8s | -55.7% |
+| Inference Latency (Warm Cache) | 31.0 ms/query | 27.9 ms/query | -3.1 ms | -10.0% |
 
 ### Test Split Evaluation (54 Answerable, 11 Unanswerable)
 
@@ -135,9 +135,29 @@ The tables below contrast the Baseline configuration against the Final configura
 | F1 at 10 | 0.0352 | 0.0548 | +0.0196 | +55.7% |
 | False Negatives (Answerable Abstain) | 0.0000 | 0.0000 | 0.0000 | 0.0% |
 | True Negatives (Unanswerable Abstain) | 0.0000 | 0.3636 | +0.3636 | Infinite |
-| Inference Time | 18.2s | 3.8s | -14.4s | -79.1% |
+| Inference Latency (Warm Cache) | 31.0 ms/query | 27.9 ms/query | -3.1 ms | -10.0% |
 
-## 6. Iteration History
+## 6. Analysis of Performance Discrepancies
+
+### The Train to Test Gap
+
+The evaluation numbers show a marked drop from train to test across both Recall at 5 (0.2393 on train versus 0.1036 on test) and unanswerable abstention (0.7917 on train versus 0.3636 on test). Our investigation reveals the concrete empirical drivers of this gap:
+
+1. Unanswerable Partition Imbalance: In the final routed architecture, abstention on unanswerable queries is driven primarily by the router identifying named contracts that are absent from the indexed corpus. In the training split, 19 of the 24 unanswerable queries (79.2 percent) named an out of corpus agreement, resulting in an exact 0.7917 true negative rate. In the test split, by hash partition chance, only 4 of the 11 unanswerable queries (36.4 percent) named an out of corpus agreement (the remaining 7 asked unanswerable questions about contracts that do exist in the corpus). This precisely accounts for the 0.3636 test abstention rate (4 out of 11).
+2. Sample Noise on Small Test Partition: With only 11 unanswerable queries in the test set, each individual query accounts for a 9.1 percentage point shift in the metric.
+3. Answerable Query Complexity: The 54 test queries contain a higher proportion of multi paragraph indemnification and liability carve outs whose gold annotations span over 1,000 characters, depressing character level recall for 512 character chunks.
+
+### Why Recall at 1 is Near Zero (Empirical Finding)
+
+On both train and test, Recall at 1 is near zero (0.0262 on train, 0.0008 on test), while Recall at 5 jumps to 0.2393 and 0.1036.
+
+To explain this, we ran two diagnostic experiments:
+1. Router Accuracy Validation: We evaluated the Document Router against ground truth contract targets across both splits. Router accuracy was 140/140 (100.0 percent) on train and 54/54 (100.0 percent) on test. The router never selects the wrong contract.
+2. Preamble Bias Analysis: We inspected the top retrieved chunk across all training queries. In 55.0 percent of queries (77 out of 140), the Rank 1 chunk began at character offset 0 (the contract title, execution date, and party recital preamble).
+
+Because LegalBench RAG prompts include the full agreement title (for example, "Consider the Amendment No. 3 to Wireless Content License Agreement between Fox Mobile Entertainment, Inc. and Glu Mobile Inc.; What is the expiration date of this contract?"), the dense vector embedding of the query is heavily biased toward the formal title block at offset 0. That preamble block almost never contains the substantive answer span, which appears later in Section 4, 12, or 17. Consequently, Rank 1 is consumed by the preamble, while the substantive answer is retrieved at Ranks 2 through 5.
+
+## 7. Iteration History and Detailed Findings
 
 The self improvement loop executed 6 systematic diagnostic iterations beyond the baseline. All proposals were evaluated against predefined guardrails on the train split:
 - Primary Optimization Target: Maximize Mean Recall at 5
@@ -157,18 +177,20 @@ The self improvement loop executed 6 systematic diagnostic iterations beyond the
 | 5 | increase_chunk_overlap | Increase overlap from 128 to 256 characters (50 percent) to resolve boundary fractures | 0.2355 | 0.0516 | 0.7917 | REJECTED |
 | 6 | tune_dense_threshold_0.35 | Raise cosine abstention threshold from 0.30 to 0.35 to reject borderline negatives | 0.2393 | 0.0488 | 0.7917 | REJECTED |
 
-### Detailed Rationale and Findings per Iteration
+### Detailed Analysis of Iteration Rejections
 
-- Iteration 1 (enable_document_routing): Accepted. Error diagnosis on baseline revealed that 0 out of 164 queries lacked contract cues, yet unrouted search allowed unrelated contracts to contaminate top ranks. Routing improved Recall at 5 from 0.1888 to 0.2393 (+0.0505) and boosted unanswerable abstention from 0.0000 to 0.7917 by immediately abstaining on out of corpus contracts.
-- Iteration 2 (enable_clause_chunking): Rejected. We hypothesized that clause boundaries would isolate concise legal definitions. However, Recall at 5 fell from 0.2393 to 0.1815 (-0.0578). Many CUAD questions match broad covenants whose meaning is fractured by smaller 400 character fragments.
-- Iteration 3 (enable_cross_encoder_reranker): Rejected. Reranking top 30 candidates using `cross-encoder/ms-marco-MiniLM-L-6-v2` improved true negative abstention to 83.3 percent, but degraded Recall at 5 to 0.1562 (-0.0831). The reranker penalizes legal jargon without task specific domain adaptation.
-- Iteration 4 (enable_bm25_hybrid): Rejected. We hypothesized BM25 would assist with exact section titles. Instead, Recall at 5 dropped to 0.1744 (-0.0649). Repetitive boilerplate tokens in commercial contracts distorted sparse keyword weights.
-- Iteration 5 (increase_chunk_overlap): Rejected. Diagnosis identified 46 queries with partial overlap. Increasing overlap to 256 characters slightly improved Precision at 5 (from 0.0488 to 0.0516) and Recall at 10 (from 0.3918 to 0.4019), but slightly reduced Recall at 5 from 0.2393 to 0.2355 (-0.0038).
-- Iteration 6 (tune_dense_threshold_0.35): Rejected. Raising the threshold to 0.35 produced no change in Recall at 5 (0.2393) and no improvement in unanswerable rejection, confirming that 0.30 is well calibrated.
+- Iteration 1 (enable_document_routing): Accepted. Constraining dense search to the routed agreement eliminated cross document noise, raising Recall at 5 from 0.1888 to 0.2393 (+0.0505) and unanswerable abstention from 0.0000 to 0.7917.
+- Iteration 2 (enable_clause_chunking): Rejected. Clause boundary chunking reduced Recall at 5 to 0.1815 (-0.0578). Broad legal obligations were fractured across 400 character boundaries.
+- Iteration 3 (enable_cross_encoder_reranker): Rejected. Recall at 5 dropped to 0.1562 (-0.0831). Inspection of the ranking pipeline revealed two implementation artifacts:
+  1. Prompt Title Dominance: The cross encoder compared the full prompt (including contract and party names) against candidate chunks. It awarded top scores (+8.14) to the preamble chunk containing the title, while scoring the operational clause negative (-6.80).
+  2. Logit Score Scale: The cross encoder outputs uncalibrated logits rather than normalized probabilities, causing score scale distortion when evaluated against cosine similarity thresholds.
+- Iteration 4 (enable_bm25_hybrid): Rejected. Recall at 5 dropped to 0.1744 (-0.0649). Tokenizing the entire prompt string resulted in extreme BM25 scores for the contract title words occurring in the preamble, diluting the lexical weight of the substantive question tokens.
+- Iteration 5 (increase_chunk_overlap): Rejected. Increasing overlap from 128 to 256 characters slightly improved Precision at 5 (0.0488 to 0.0516) and Recall at 10 (0.3918 to 0.4019), but reduced Recall at 5 slightly from 0.2393 to 0.2355 (-0.0038).
+- Iteration 6 (tune_dense_threshold_0.35): Rejected. Raising the cosine threshold to 0.35 produced no change in Recall at 5 (0.2393) and no change in unanswerable abstention, confirming that 0.30 is already at the optimal boundary for dense MiniLM cosine scores.
 
-The loop converged on `iter_1_document_routing` as the optimal configuration.
+The loop converged on `iter_1_document_routing` as the best performing configuration.
 
-## 7. Failure Diagnosis
+## 8. Failure Diagnosis
 
 Systematic diagnosis of the final configuration across the training partition categorized 164 queries into distinct failure modes:
 - Perfect Match: 26 queries (15.9 percent)
@@ -178,7 +200,7 @@ Systematic diagnosis of the final configuration across the training partition ca
 - Incorrect Retrieval on Unanswerable: 5 queries (3.0 percent)
 - Incorrect Abstention: 0 queries (0.0 percent)
 
-Below are ten concrete failure examples analyzed by failure category and root cause.
+Below are concrete failure examples analyzed by failure category and root cause.
 
 ### Category 1: Section Misalignment Within Correct Document (Wrong Section)
 
@@ -238,7 +260,7 @@ In these instances, the retriever returned the correct clause, but because legal
     - Gold Span: `[28110:28650]`
     - Root Cause: The covenant not to sue is embedded inside a comprehensive mutual release of claims. The chunk captured 62.8 percent of the mutual release span before reaching the 512 character boundary.
 
-### Category 3: False Positive Retrieval on Unanswerable Queries
+### Category 3: False Positive Retrieval on In Corpus Unanswerable Queries
 
 11. Query: "Consider the Cooperation Agreement between HPIL ENERGYTECH Inc. and GINARES GROUP AG for Renewable Energy Projects; Is there a carbon credit offset obligation or environmental sustainability covenant in this contract?"
     - Top Retrieved Passage: Section 4 (`[3456:3963]`), Score = 0.6190 (surpassed threshold 0.3000)
@@ -248,14 +270,14 @@ In these instances, the retriever returned the correct clause, but because legal
     - Top Retrieved Passage: Section 12 (`[31872:32384]`), Score = 0.5206 (surpassed threshold 0.3000)
     - Root Cause: General limitation of liability clauses discuss consequential damages and negligence exclusions, creating strong dense similarity even when gross negligence carve outs are omitted.
 
-## 8. Production Deployment Considerations
+## 9. Production Deployment Considerations
 
 ### Latency Profiles and Throughput
 
-- In our production evaluation, single query latency averaged 58 milliseconds on commodity x86 CPUs without GPU acceleration.
-- Document routing reduces vector comparison overhead by 96 percent by narrowing the search space from 6,000 global chunks to 200 contract specific chunks per query.
-- FAISS inner product search over 200 normalized vectors executes in under 2 milliseconds; embedding generation via MiniLM accounts for the remaining 56 milliseconds.
-- Throughput can be scaled horizontally behind an ASGI endpoint (such as FastAPI) with batch query embedding.
+- When evaluated back to back in the same process with warm model weights, single query inference averaged 27.9 milliseconds for routed retrieval versus 31.0 milliseconds for unrouted baseline search (an 11 percent speedup).
+- In a standalone cold start process, initial model loading and FAISS initialization require approximately 2.5 seconds.
+- FAISS inner product search over 200 normalized vectors for a routed agreement executes in under 2 milliseconds; query embedding generation via MiniLM accounts for the remaining 26 milliseconds.
+- High throughput concurrent workloads can be batched behind an ASGI framework (such as FastAPI) on GPU or multicore CPU instances.
 
 ### Memory Footprint and Index Caching
 
@@ -277,16 +299,17 @@ In commercial legal environments, agreements are executed, revised, or terminate
 - Document routing inherently enforces tenant isolation by restricting search to authorized contract subsets matching user permissions.
 - Cold start latency is under 3 seconds: pre built FAISS indexes load from memory mapped disk storage in under 200 milliseconds, and sentence transformer weights load in 2.5 seconds.
 
-## 9. Limitations and Future Directions
+## 10. Limitations and Strategic Recommendations
 
 ### Current Limitations
 
 1. General Domain Embedding Vocabulary: `all-MiniLM-L6-v2` is pretrained on general web text. While it handles semantic similarity effectively, it lacks fine grained understanding of legal distinctions between terms like "indemnification", "subrogation", and "liquidated damages".
 2. Multi Paragraph Clause Fragmentation: Fixed 512 character sliding windows inevitably truncate long contractual provisions that span multiple subsections.
-3. Overlap with Contractual Recitals: Preambles and recitals frequently mention party definitions and subject matter, attracting dense vector attention over substantive operational clauses.
+3. Prompt Preamble Bias: Because LegalBench RAG queries include the agreement title in the prompt prefix, dense vector search is biased toward the contract preamble at offset 0, depressing Recall at 1.
 
 ### Strategic Recommendations
 
-1. Domain Adapted Legal Embedding Fine Tuning: Fine tune sentence transformers using contrastive loss on legal clause pairs (for example, CUAD and EDGAR contract filings) to sharpen distinction between boilerplate and operational terms.
-2. Hierarchical Clause Expansion: Store document structural hierarchy (Section $\rightarrow$ Subsection $\rightarrow$ Paragraph). When a chunk is retrieved, dynamically expand the returned character span to encompass the complete parent subsection.
-3. Calibrated Cross Encoder with Domain Negatives: Deploy a cross encoder reranker fine tuned specifically on legal hard negatives (distinguishing boilerplate recitals from substantive covenants) to boost true negative abstention beyond 90 percent without sacrificing answerable recall.
+1. Query Prompt Decomposition: Strip or separate the agreement entity prefix from the substantive legal question before passing to the dense embedder and cross encoder, allowing the router to use the entity prefix while the search engine matches only the substantive legal question.
+2. Domain Adapted Legal Embedding Fine Tuning: Fine tune sentence transformers using contrastive loss on legal clause pairs (for example, CUAD and EDGAR contract filings) to sharpen distinction between boilerplate and operational terms.
+3. Hierarchical Clause Expansion: Store document structural hierarchy (Section $\rightarrow$ Subsection $\rightarrow$ Paragraph). When a chunk is retrieved, dynamically expand the returned character span to encompass the complete parent subsection.
+4. Calibrated Cross Encoder with Logit Thresholding: Deploy a cross encoder reranker with task specific logit threshold calibration and entity prefix isolation to boost true negative abstention on in corpus unanswerable queries without suppressing substantive answers.

@@ -253,5 +253,20 @@ class Evaluator:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(results.to_dict(), f, indent=2)
 
+        # Log test runs to persistent verifiable test_runs.jsonl tracker
+        if results.split == "test":
+            test_tracker = LOGS_DIR / "test_runs.jsonl"
+            run_entry = {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "config_name": results.config_name,
+                "split": results.split,
+                "num_queries": results.num_queries,
+                "recall_at_5": results.mean_recall_at.get(5, 0.0),
+                "precision_at_5": results.mean_precision_at.get(5, 0.0),
+                "unanswerable_abstention": results.abstention_rate_unanswerable,
+            }
+            with open(test_tracker, "a", encoding="utf-8") as tf:
+                tf.write(json.dumps(run_entry) + "\n")
+
         print(f"Results saved to {path}")
 
