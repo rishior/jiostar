@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Pytest / cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# HuggingFace Cache
+data/.cache/
+data/corpus/
+data/benchmarks/
+data/index/*/
+
+# Keep the base index files if desired or ignore large binaries
+*.index
+scratch*
+*.log
