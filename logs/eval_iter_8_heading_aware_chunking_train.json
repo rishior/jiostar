@@ -57,7 +57,7 @@
   "abstention_rate_unanswerable_out_of_corpus": 0.7916666666666666,
   "abstention_rate_unanswerable_in_corpus": 0.4782608695652174,
   "rank1_preamble_rate": 0.007142857142857143,
-  "elapsed_seconds": 13.102035522460938,
+  "elapsed_seconds": 29.052456617355347,
   "query_results": [
     {
       "query": "Consider the Amendment No. 3 to Wireless Content License Agreement between Fox Mobile Entertainment, Inc. and Glu Mobile Inc.; What is the expiration date of this contract?",
