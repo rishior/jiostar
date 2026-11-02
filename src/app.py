@@ -20,7 +20,9 @@ from src.retrieval.pipeline import RetrievalPipeline
 @st.cache_resource
 def load_pipeline():
     """Load the retrieval pipeline (cached across reruns)."""
-    cfg_path = CONFIGS_DIR / "final.yaml"
+    cfg_path = CONFIGS_DIR / "final_v2.yaml"
+    if not cfg_path.exists():
+        cfg_path = CONFIGS_DIR / "final.yaml"
     if cfg_path.exists():
         cfg = PipelineConfig.load(cfg_path)
     else:
